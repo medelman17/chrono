@@ -249,6 +249,10 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
       //
       // Respond ONLY with valid JSON. Do not include any text outside the JSON structure.`;
 
+      // Get key parties and instructions from form elements
+      const keyPartiesElement = document.getElementById("keyParties") as HTMLTextAreaElement;
+      const instructionsElement = document.getElementById("claudeInstructions") as HTMLTextAreaElement;
+      
       // Call our API endpoint for Claude analysis
       const analysisResponse = await fetch('/api/documents/analyze', {
         method: 'POST',
@@ -258,7 +262,16 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
         body: JSON.stringify({
           content: documentText,
           filename: 'Multiple files',
-          caseContext: caseContext || userContext,
+          caseContext: caseContext,
+          keyParties: keyPartiesElement?.value || initialKeyParties,
+          instructions: instructionsElement?.value || initialInstructions,
+          userContext: userContext,
+          existingEntries: entries.map(entry => ({
+            date: entry.date,
+            time: entry.time,
+            title: entry.title,
+            summary: entry.summary
+          }))
         }),
       });
 
@@ -299,7 +312,7 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
         parties: analysisResult.parties || "",
         title: analysisResult.title || "",
         summary: analysisResult.summary || "",
-        source: analysisResult.sourceInfo || "Document Analysis",
+        source: analysisResult.source || analysisResult.sourceInfo || "Document Analysis",
         category: analysisResult.category || "",
         legalSignificance: analysisResult.legalSignificance || "",
         relatedEntries: analysisResult.relatedEntries || "",
