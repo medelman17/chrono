@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String            @id @default(cuid())
+  clerkId     String            @unique
+  email       String            @unique
+  name        String?
+  preferences Json?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  ownedCases  Case[]
+  sharedCases CaseShare[]
+  entries     ChronologyEntry[]
+
+  @@index([clerkId])
+  @@index([email])
+}
+
+model Case {
+  id           String            @id @default(cuid())
+  name         String
+  description  String?
+  context      String?
+  keyParties   String?
+  instructions String?
+  userId       String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  owner        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shares       CaseShare[]
+  entries      ChronologyEntry[]
+  documents    Document[]
+
+  @@index([userId])
+}
+
+model ChronologyEntry {
+  id                String     @id @default(cuid())
+  date              DateTime
+  time              String?
+  parties           String
+  title             String
+  summary           String
+  source            String?
+  category          String
+  legalSignificance String?
+  relatedEntries    String?
+  caseId            String
+  userId            String
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  case              Case       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents         Document[]
+
+  @@index([caseId])
+  @@index([date])
+  @@index([category])
+}
+
+model Document {
+  id         String           @id @default(cuid())
+  filename   String
+  fileType   String
+  fileSize   Int
+  storageKey String?          @unique
+  content    String?
+  metadata   Json?
+  caseId     String
+  entryId    String?
+  uploadedBy String
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  case       Case             @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  entry      ChronologyEntry? @relation(fields: [entryId], references: [id])
+
+  @@index([caseId])
+  @@index([entryId])
+}
+
+model CaseShare {
+  id         String   @id @default(cuid())
+  caseId     String
+  userId     String
+  permission String   @default("view")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  case       Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, userId])
+  @@index([userId])
+}
