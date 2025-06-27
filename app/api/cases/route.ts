@@ -6,6 +6,7 @@ import { getCurrentUser } from '@/lib/auth';
 export async function GET() {
   try {
     const user = await getCurrentUser();
+    console.log('GET /api/cases - Current user:', user);
     
     if (!user) {
       return NextResponse.json(

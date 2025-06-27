@@ -28,7 +28,18 @@ export default function CasesPage() {
     try {
       const response = await fetch('/api/cases');
       if (response.status === 401) {
-        // User is not authenticated, Clerk middleware will redirect
+        // Try to sync user first
+        const syncResponse = await fetch('/api/auth/sync', { method: 'POST' });
+        if (syncResponse.ok) {
+          // Retry fetching cases
+          const retryResponse = await fetch('/api/cases');
+          if (retryResponse.ok) {
+            const data = await retryResponse.json();
+            setCases(data);
+            return;
+          }
+        }
+        // If still unauthorized, Clerk middleware will redirect
         return;
       }
       if (!response.ok) throw new Error('Failed to fetch cases');
