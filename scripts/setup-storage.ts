@@ -1,4 +1,19 @@
-import { supabase, STORAGE_BUCKETS } from '../lib/supabase';
+import * as dotenv from 'dotenv';
+import { createClient } from '@supabase/supabase-js';
+
+// Load environment variables
+dotenv.config({ path: '.env' });
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Missing Supabase environment variables');
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const STORAGE_BUCKETS = { DOCUMENTS: 'case-documents' };
 
 async function setupStorage() {
   try {
