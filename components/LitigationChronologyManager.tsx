@@ -133,33 +133,38 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
     setClaudeResponse("Uploading and processing files...");
 
     try {
-      // Create FormData and append files
-      const formData = new FormData();
-      files.forEach(file => {
-        formData.append('files', file);
-      });
-
-      // Upload files to our API for processing
-      const uploadResponse = await fetch('/api/documents/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error(`Upload failed: ${uploadResponse.statusText}`);
-      }
-
-      const uploadResult = await uploadResponse.json();
-      
-      // Combine all file contents
+      // Process files one by one (since our API handles single files)
       let allContent = "";
-      const processedFiles = uploadResult.files || [];
-      
-      for (const file of processedFiles) {
-        if (file.error) {
-          allContent += `\n\n--- FILE: ${file.name} ---\n[ERROR: ${file.error}]\n--- END FILE ---\n`;
-        } else if (file.content) {
-          allContent += `\n\n--- FILE: ${file.name} (${Math.round(file.fileSize / 1024)}KB) ---\n${file.content}\n--- END FILE ---\n`;
+      const processedFiles = [];
+
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        if (caseId) {
+          formData.append('caseId', caseId);
+        }
+
+        // Upload file to our API for processing
+        const uploadResponse = await fetch('/api/documents/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+          const error = await uploadResponse.json();
+          processedFiles.push({
+            name: file.name,
+            error: error.error || 'Upload failed'
+          });
+          continue;
+        }
+
+        const uploadResult = await uploadResponse.json();
+        processedFiles.push(uploadResult);
+        
+        // Add to combined content
+        if (uploadResult.content) {
+          allContent += `\n\n--- FILE: ${uploadResult.name} (${Math.round(uploadResult.fileSize / 1024)}KB) ---\n${uploadResult.content}\n--- END FILE ---\n`;
         }
       }
 

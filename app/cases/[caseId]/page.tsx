@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Settings } from "lucide-react";
 import LitigationChronologyManager from "@/components/LitigationChronologyManager";
+import DocumentsList from "@/components/DocumentsList";
 import { ChronologyEntry } from "@/types/chronology";
 
 interface CaseData {
@@ -23,6 +24,7 @@ export default function CaseDetailPage() {
   const caseId = params.caseId as string;
   const [caseData, setCaseData] = useState<CaseData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'chronology' | 'documents'>('chronology');
 
   useEffect(() => {
     const fetchCase = async () => {
@@ -99,14 +101,48 @@ export default function CaseDetailPage() {
         <p className="text-gray-600">{caseData.description}</p>
       </div>
 
-      {/* Pass case context to the chronology manager */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <LitigationChronologyManager 
-          initialCaseContext={caseData.context || ""}
-          initialKeyParties={caseData.keyParties || ""}
-          initialInstructions={caseData.instructions || ""}
-          caseId={caseId}
-        />
+      {/* Tab navigation */}
+      <div className="mb-6">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+            <button
+              onClick={() => setActiveTab('chronology')}
+              className={`border-b-2 py-2 px-1 text-sm font-medium ${
+                activeTab === 'chronology'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Chronology
+            </button>
+            <button
+              onClick={() => setActiveTab('documents')}
+              className={`border-b-2 py-2 px-1 text-sm font-medium ${
+                activeTab === 'documents'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Documents
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      {/* Tab content */}
+      <div className="space-y-6">
+        {activeTab === 'chronology' ? (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <LitigationChronologyManager 
+              initialCaseContext={caseData.context || ""}
+              initialKeyParties={caseData.keyParties || ""}
+              initialInstructions={caseData.instructions || ""}
+              caseId={caseId}
+            />
+          </div>
+        ) : (
+          <DocumentsList caseId={caseId} />
+        )}
       </div>
     </div>
   );
