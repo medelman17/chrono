@@ -2,6 +2,21 @@
 
 The storage bucket needs to be created manually in your Supabase dashboard.
 
+## UPDATE: If Still Getting "Bucket not found" After Creating Bucket
+
+If you're still getting the error after creating the bucket, you might need the service role key:
+
+1. Go to your Supabase project settings
+2. Navigate to API settings
+3. Copy the **service_role** key (NOT the anon key)
+4. Add it to your `.env.local`:
+   ```
+   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
+   ```
+5. Restart your development server
+
+The service role key has full access to storage and bypasses RLS policies.
+
 ## Steps to Create the Bucket:
 
 1. **Open Supabase Dashboard**

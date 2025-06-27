@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { supabase, STORAGE_BUCKETS } from '@/lib/supabase';
+import { createServerSupabaseClient, STORAGE_BUCKETS } from '@/lib/supabase-server';
 
 // GET /api/documents/[documentId] - Get document details
 export async function GET(
@@ -43,6 +43,9 @@ export async function GET(
         { status: 404 }
       );
     }
+
+    // Create Supabase client
+    const supabase = createServerSupabaseClient();
 
     // Get a temporary signed URL for secure download
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
@@ -110,6 +113,9 @@ export async function DELETE(
         { status: 404 }
       );
     }
+
+    // Create Supabase client
+    const supabase = createServerSupabaseClient();
 
     // Delete from Supabase Storage
     if (document.storageKey) {

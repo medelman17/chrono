@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { supabase, STORAGE_BUCKETS } from '@/lib/supabase';
+import { createServerSupabaseClient, STORAGE_BUCKETS } from '@/lib/supabase-server';
 import { prisma } from '@/lib/prisma';
 import mammoth from 'mammoth';
 import { LlamaParse } from 'llama-parse';
@@ -74,6 +74,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Create Supabase client for this request
+    const supabase = createServerSupabaseClient();
+
     // Parse form data
     const formData = await req.formData();
     const file = formData.get('file') as File;
@@ -128,6 +131,12 @@ export async function POST(req: NextRequest) {
     const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const filePath = `${user.id}/${caseId}/${timestamp}-${safeName}`;
 
+    // Debug: List buckets to verify connection
+    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+    console.log('Available buckets:', buckets);
+    console.log('List error:', listError);
+    console.log('Trying to upload to bucket:', STORAGE_BUCKETS.DOCUMENTS);
+
     // Upload to Supabase Storage
     const { error: uploadError } = await supabase.storage
       .from(STORAGE_BUCKETS.DOCUMENTS)
@@ -138,8 +147,10 @@ export async function POST(req: NextRequest) {
 
     if (uploadError) {
       console.error('Upload error:', uploadError);
+      console.error('Bucket name:', STORAGE_BUCKETS.DOCUMENTS);
+      console.error('File path:', filePath);
       return NextResponse.json(
-        { error: 'Failed to upload file' },
+        { error: 'Failed to upload file', details: uploadError },
         { status: 500 }
       );
     }
