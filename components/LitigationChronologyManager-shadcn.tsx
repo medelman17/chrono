@@ -161,46 +161,12 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
     setClaudeResponse("");
 
     try {
-      const response = await fetch("/api/documents/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          documentIds,
-          caseContext,
-          keyParties,
-          instructions,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to analyze documents");
-      }
-
-      const data = await response.json();
-      setClaudeResponse(data.analysis);
-
-      // Parse the response to extract chronology entries
-      if (data.entries && Array.isArray(data.entries)) {
-        const newEntries = data.entries.map((entry: ChronologyEntry) => ({
-          ...entry,
-          id: Date.now() + Math.random(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          documents: documentIds.map(id => ({
-            id,
-            filename: "Uploaded Document",
-            fileType: "unknown",
-            fileSize: 0,
-          })),
-        }));
-
-        setEntries((prev) => [...prev, ...newEntries]);
-      }
+      // For now, we'll need to fetch document content separately
+      // This is a limitation - the analyze endpoint expects content, not IDs
+      setClaudeResponse("Documents uploaded successfully. Please use the 'Paste Document Content' section below to analyze the content with Claude.");
     } catch (error) {
       console.error("Error processing documents with Claude:", error);
-      setClaudeResponse("Error: Failed to analyze documents. Please try again.");
+      setClaudeResponse("Error: Failed to process documents. Please try again.");
     } finally {
       setIsClaudeProcessing(false);
     }
