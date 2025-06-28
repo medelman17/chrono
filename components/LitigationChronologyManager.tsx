@@ -15,7 +15,6 @@ import {
   MessageSquare,
   Upload,
   Save,
-  ExternalLink,
 } from "lucide-react";
 
 interface LitigationChronologyManagerProps {
@@ -511,7 +510,7 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
   };
 
   // Save case context data
-  const saveCaseContext = async (showAlert = true) => {
+  const saveCaseContext = useCallback(async (showAlert = true) => {
     if (!caseId) return;
     
     setIsSaving(true);
@@ -546,7 +545,7 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [caseId, caseContext, keyParties, instructions]);
 
   // Debounced auto-save function
   const debouncedSave = useCallback(() => {
@@ -561,7 +560,7 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
     saveTimeoutRef.current = setTimeout(() => {
       saveCaseContext(false); // Don't show alert for auto-save
     }, 2000); // Auto-save after 2 seconds of inactivity
-  }, [caseId, caseContext, keyParties, instructions]);
+  }, [caseId, saveCaseContext]);
 
   // Trigger auto-save when context data changes
   useEffect(() => {
@@ -1183,7 +1182,7 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
                             >
                               <FileText size={12} />
                               <span>{doc.filename}</span>
-                              {idx < entry.documents.length - 1 && <span className="text-gray-400">,</span>}
+                              {idx < entry.documents!.length - 1 && <span className="text-gray-400">,</span>}
                             </button>
                           ))}
                         </div>

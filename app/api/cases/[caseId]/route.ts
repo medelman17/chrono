@@ -75,7 +75,7 @@ export async function PUT(
     }
 
     // Build update data object - only include fields that are provided
-    const updateData: any = {};
+    const updateData: Record<string, string | null> = {};
     
     if (body.name !== undefined) updateData.name = body.name;
     if (body.description !== undefined) updateData.description = body.description;
