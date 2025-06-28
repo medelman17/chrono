@@ -8,6 +8,7 @@ export interface PrintOptions {
   includePageNumbers?: boolean;
   includeTableOfContents?: boolean;
   includeLegalSignificance?: boolean;
+  includeRelatedEntries?: boolean;
   fontSize?: "small" | "medium" | "large";
   paperSize?: "letter" | "legal";
   margins?: "narrow" | "normal" | "wide";
@@ -40,6 +41,7 @@ export function generatePrintHTML(
     includePageNumbers = true,
     includeTableOfContents = false,
     includeLegalSignificance = true,
+    includeRelatedEntries = true,
     fontSize = "medium",
     paperSize = "letter",
     margins = "normal",
@@ -692,14 +694,14 @@ export function generatePrintHTML(
             </div>
           ` : ""}
           
-          ${entry.source || entry.relatedEntries ? `
+          ${entry.source || (includeRelatedEntries && entry.relatedEntries) ? `
             <div class="entry-metadata">
               ${entry.source ? `
                 <div class="metadata-item">
                   <span>Source: ${escapeHtml(entry.source)}</span>
                 </div>
               ` : ""}
-              ${entry.relatedEntries ? `
+              ${includeRelatedEntries && entry.relatedEntries ? `
                 <div class="metadata-item">
                   <span>See: ${escapeHtml(entry.relatedEntries)}</span>
                 </div>

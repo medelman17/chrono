@@ -25,6 +25,7 @@ export default function PrintSettingsModal({
     includePageNumbers: true,
     includeTableOfContents: entryCount > 10,
     includeLegalSignificance: true,
+    includeRelatedEntries: true,
     fontSize: "medium",
     paperSize: "letter",
     margins: "normal",
@@ -195,6 +196,17 @@ export default function PrintSettingsModal({
                 />
                 <span className="text-sm text-gray-700">
                   Include legal significance analysis
+                </span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={options.includeRelatedEntries}
+                  onChange={(e) => setOptions({ ...options, includeRelatedEntries: e.target.checked })}
+                  className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">
+                  Include related entry references
                 </span>
               </label>
             </div>
