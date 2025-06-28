@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, ChangeEvent, useCallback, useRef } from "react";
 import { ChronologyEntry, ChronologyFormData } from "@/types/chronology";
+import { generatePrintHTML, PrintOptions } from "@/lib/print-chronology";
+import PrintSettingsModal from "./PrintSettingsModal";
 import {
   Plus,
   Search,
@@ -15,6 +17,7 @@ import {
   MessageSquare,
   Upload,
   Save,
+  Printer,
 } from "lucide-react";
 
 interface LitigationChronologyManagerProps {
@@ -49,6 +52,8 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [pendingDocumentIds, setPendingDocumentIds] = useState<string[]>([]);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printExportType, setPrintExportType] = useState<"full" | "filtered">("full");
 
   // Form state for new/edited entries
   const [formData, setFormData] = useState<ChronologyFormData>({
@@ -732,6 +737,36 @@ ${'—'.repeat(40)}
     }
   };
 
+  // Print preview functionality
+  const printPreview = (options: PrintOptions) => {
+    const entriesToExport = printExportType === "filtered" ? filteredEntries : entries;
+
+    if (entriesToExport.length === 0) {
+      alert("No entries to print");
+      return;
+    }
+
+    const printHTML = generatePrintHTML(
+      entriesToExport, 
+      caseContext, 
+      keyParties, 
+      options
+    );
+
+    // Open in new window
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(printHTML);
+      printWindow.document.close();
+    }
+  };
+
+  // Open print modal
+  const openPrintModal = (exportType: "full" | "filtered") => {
+    setPrintExportType(exportType);
+    setShowPrintModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -840,7 +875,7 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
 
         {/* Controls */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-4">
             <button
               onClick={() => setShowAddForm(true)}
               className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
@@ -863,6 +898,14 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
             >
               <Filter size={20} />
               Export Filtered
+            </button>
+
+            <button
+              onClick={() => openPrintModal("full")}
+              className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
+            >
+              <Printer size={20} />
+              Print Preview
             </button>
 
             <div className="text-sm text-gray-600 flex items-center gap-2">
@@ -1259,6 +1302,14 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
             )}
           </div>
         </div>
+
+        {/* Print Settings Modal */}
+        <PrintSettingsModal
+          isOpen={showPrintModal}
+          onClose={() => setShowPrintModal(false)}
+          onPrint={printPreview}
+          entryCount={printExportType === "filtered" ? filteredEntries.length : entries.length}
+        />
       </div>
     </div>
   );
