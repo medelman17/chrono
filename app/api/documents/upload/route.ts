@@ -6,14 +6,7 @@ import mammoth from "mammoth";
 import { LlamaParse } from "llama-parse";
 import Anthropic from "@anthropic-ai/sdk";
 import exifr from "exifr";
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import { createCanvas } from "canvas";
-
-// Configure PDF.js to use local worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/legacy/build/pdf.worker.mjs',
-  import.meta.url,
-).toString();
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // 60 seconds timeout
@@ -127,15 +120,14 @@ async function extractImageMetadata(buffer: Buffer, filename: string) {
   }
 }
 
-async function convertPDFPageToImage(page: pdfjsLib.PDFPageProxy): Promise<Buffer> {
+async function convertPDFPageToImage(page: any): Promise<Buffer> {
   const viewport = page.getViewport({ scale: 2.0 }); // Higher scale for better quality
   const canvas = createCanvas(viewport.width, viewport.height);
   const context = canvas.getContext('2d');
 
   // Render PDF page to canvas
   await page.render({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    canvasContext: context as any,
+    canvasContext: context,
     viewport: viewport,
   }).promise;
 
@@ -146,6 +138,15 @@ async function convertPDFPageToImage(page: pdfjsLib.PDFPageProxy): Promise<Buffe
 async function analyzePDFWithClaude(buffer: Buffer, filename: string): Promise<string> {
   try {
     console.log(`[DEBUG] Converting PDF to images for Claude Vision analysis: ${filename}`);
+    
+    // Dynamic import of PDF.js to avoid ESM issues
+    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    
+    // Configure worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+      'pdfjs-dist/legacy/build/pdf.worker.mjs',
+      import.meta.url,
+    ).toString();
     
     // Load the PDF
     const loadingTask = pdfjsLib.getDocument({
