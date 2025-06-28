@@ -161,7 +161,7 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
     setClaudeResponse("");
 
     try {
-      const response = await fetch("/api/claude/analyze-documents", {
+      const response = await fetch("/api/documents/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -219,7 +219,7 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
     setClaudeResponse("");
 
     try {
-      const response = await fetch("/api/claude/analyze", {
+      const response = await fetch("/api/documents/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
