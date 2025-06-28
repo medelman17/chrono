@@ -26,6 +26,7 @@ export default function PrintSettingsModal({
     includeTableOfContents: entryCount > 10,
     includeLegalSignificance: true,
     includeRelatedEntries: true,
+    allowPageBreaks: false,
     fontSize: "medium",
     paperSize: "letter",
     margins: "normal",
@@ -207,6 +208,17 @@ export default function PrintSettingsModal({
                 />
                 <span className="text-sm text-gray-700">
                   Include related entry references
+                </span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={options.allowPageBreaks}
+                  onChange={(e) => setOptions({ ...options, allowPageBreaks: e.target.checked })}
+                  className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">
+                  Allow entries to break across pages (more compact)
                 </span>
               </label>
             </div>

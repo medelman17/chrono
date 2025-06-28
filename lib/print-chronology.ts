@@ -9,6 +9,7 @@ export interface PrintOptions {
   includeTableOfContents?: boolean;
   includeLegalSignificance?: boolean;
   includeRelatedEntries?: boolean;
+  allowPageBreaks?: boolean;
   fontSize?: "small" | "medium" | "large";
   paperSize?: "letter" | "legal";
   margins?: "narrow" | "normal" | "wide";
@@ -42,6 +43,7 @@ export function generatePrintHTML(
     includeTableOfContents = false,
     includeLegalSignificance = true,
     includeRelatedEntries = true,
+    allowPageBreaks = false,
     fontSize = "medium",
     paperSize = "letter",
     margins = "normal",
@@ -111,7 +113,7 @@ export function generatePrintHTML(
         /* Compact entry styling for better scanning */
         .entry {
           margin-bottom: 0.75em;
-          page-break-inside: avoid;
+          ${!allowPageBreaks ? 'page-break-inside: avoid;' : ''}
           padding: 0.5em 0;
           border-bottom: 1px solid #e5e7eb;
         }
@@ -404,7 +406,7 @@ export function generatePrintHTML(
         .content { max-width: 100%; }
         .entry {
           margin-bottom: 0.75em;
-          page-break-inside: avoid;
+          ${!allowPageBreaks ? 'page-break-inside: avoid;' : ''}
           padding: 0.5em 0;
           border-bottom: 1px solid #e5e7eb;
         }
