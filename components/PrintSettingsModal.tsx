@@ -143,8 +143,8 @@ export default function PrintSettingsModal({
                   onChange={(e) => setOptions({ ...options, paperSize: e.target.value as "letter" | "legal" })}
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="letter">Letter (8.5" × 11")</option>
-                  <option value="legal">Legal (8.5" × 14")</option>
+                  <option value="letter">Letter (8.5&quot; × 11&quot;)</option>
+                  <option value="legal">Legal (8.5&quot; × 14&quot;)</option>
                 </select>
               </div>
               <div>
@@ -156,9 +156,9 @@ export default function PrintSettingsModal({
                   onChange={(e) => setOptions({ ...options, margins: e.target.value as "narrow" | "normal" | "wide" })}
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="narrow">Narrow (0.5")</option>
-                  <option value="normal">Normal (1")</option>
-                  <option value="wide">Wide (1.5")</option>
+                  <option value="narrow">Narrow (0.5&quot;)</option>
+                  <option value="normal">Normal (1&quot;)</option>
+                  <option value="wide">Wide (1.5&quot;)</option>
                 </select>
               </div>
             </div>

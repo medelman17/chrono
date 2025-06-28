@@ -39,7 +39,7 @@ export function generatePrintHTML(
     caseNumber = "",
     preparedFor = "",
     preparedBy = "",
-    includePageNumbers = true,
+    // includePageNumbers = true, // TODO: Implement page numbering
     includeTableOfContents = false,
     includeLegalSignificance = true,
     includeRelatedEntries = true,
