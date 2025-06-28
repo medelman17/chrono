@@ -183,17 +183,17 @@ export function generatePrintHTML(
         }
 
         .entry-metadata {
-          display: flex;
-          gap: 1em;
           font-size: 0.75em;
           color: #9ca3af;
           margin-top: 0.25em;
         }
 
         .metadata-item {
-          display: flex;
-          align-items: center;
-          gap: 0.25em;
+          line-height: 1.3;
+        }
+
+        .metadata-item + .metadata-item {
+          margin-top: 0.1em;
         }
 
         .legal-significance {
@@ -465,16 +465,15 @@ export function generatePrintHTML(
           margin-bottom: 0.25em;
         }
         .entry-metadata {
-          display: flex;
-          gap: 1em;
           font-size: 0.75em;
           color: #9ca3af;
           margin-top: 0.25em;
         }
         .metadata-item {
-          display: flex;
-          align-items: center;
-          gap: 0.25em;
+          line-height: 1.3;
+        }
+        .metadata-item + .metadata-item {
+          margin-top: 0.1em;
         }
         .legal-significance {
           margin-top: 0.5em;
@@ -691,25 +690,20 @@ export function generatePrintHTML(
             </div>
           ` : ""}
           
-          <div class="entry-metadata">
-            ${entry.source ? `
-              <div class="metadata-item">
-                <span>Source: ${escapeHtml(entry.source)}</span>
-              </div>
-            ` : ""}
-            
-            ${entry.documents && entry.documents.length > 0 ? `
-              <div class="metadata-item">
-                <span>Docs: ${entry.documents.map(d => escapeHtml(d.filename)).join(", ")}</span>
-              </div>
-            ` : ""}
-            
-            ${entry.relatedEntries ? `
-              <div class="metadata-item">
-                <span>See: ${escapeHtml(entry.relatedEntries)}</span>
-              </div>
-            ` : ""}
-          </div>
+          ${entry.source || entry.relatedEntries ? `
+            <div class="entry-metadata">
+              ${entry.source ? `
+                <div class="metadata-item">
+                  <span>Source: ${escapeHtml(entry.source)}</span>
+                </div>
+              ` : ""}
+              ${entry.relatedEntries ? `
+                <div class="metadata-item">
+                  <span>See: ${escapeHtml(entry.relatedEntries)}</span>
+                </div>
+              ` : ""}
+            </div>
+          ` : ""}
         </div>
       </div>
     </div>
