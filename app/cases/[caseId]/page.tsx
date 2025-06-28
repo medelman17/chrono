@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Settings } from "lucide-react";
-import LitigationChronologyManager from "@/components/LitigationChronologyManager";
+import LitigationChronologyManager from "@/components/LitigationChronologyManager-shadcn";
 import DocumentsList from "@/components/DocumentsList";
 import { ChronologyEntry } from "@/types/chronology";
 

@@ -47,6 +47,7 @@ npx prisma studio       # Open Prisma Studio (database GUI)
 - Next.js 15.3.4 application bootstrapped with create-next-app
 - TypeScript with strict mode enabled
 - Tailwind CSS v4 for styling
+- **UI Components**: shadcn/ui (modern, accessible component library)
 - MVP React component (`mvp_version.tsx`) containing the core chronology manager functionality
 
 ### Planned Architecture (per tdd.md)
@@ -61,12 +62,13 @@ The application will evolve into a full-stack Next.js 15 implementation with:
 
 ### Key Components
 
-1. **MVP Component (`components/LitigationChronologyManager.tsx`)**
+1. **Chronology Manager (`components/LitigationChronologyManager-shadcn.tsx`)**
    - Comprehensive litigation chronology manager with state management
    - Claude AI integration for document analysis
    - File upload support with server-side processing
    - Search, filtering, and export capabilities
    - Case context management for improved AI analysis
+   - Built with shadcn/ui components for consistent, accessible UI
 
 2. **Document Processing (`app/api/documents/upload/route.ts`)**
    - LlamaParse integration for PDF and image processing (with OCR)
@@ -97,6 +99,21 @@ When integrating the MVP component:
 2. File processing includes various document types - implement proper file upload handling
 3. State management is currently local - will need migration to database persistence
 4. Export functionality generates formatted text - consider additional export formats
+
+## UI Component Guidelines
+
+**Always use shadcn/ui components** for all UI elements:
+- Use `Button` from `@/components/ui/button` instead of native buttons
+- Use `Input`, `Textarea`, `Select` from shadcn/ui for form elements
+- Use `Card` components for container elements
+- Use `Dialog` for modals instead of custom implementations
+- Import icons from `lucide-react` (already integrated with shadcn/ui)
+- Use the `cn()` utility from `@/lib/utils` for conditional classes
+
+When adding new UI components:
+```bash
+npx shadcn@latest add [component-name]
+```
 
 ## Key Features to Preserve
 
