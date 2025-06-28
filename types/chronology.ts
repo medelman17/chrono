@@ -5,6 +5,19 @@ export interface DocumentReference {
   fileSize: number;
 }
 
+export interface Chronology {
+  id: string;
+  name: string;
+  description?: string | null;
+  type?: string | null;
+  caseId: string;
+  userId: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+  entriesCount?: number;
+}
+
 export interface ChronologyEntry {
   id: number | string;
   date: string;
@@ -18,6 +31,7 @@ export interface ChronologyEntry {
   relatedEntries: string;
   createdAt: string;
   updatedAt: string;
+  chronologyId?: string;
   documents?: DocumentReference[];
 }
 
@@ -31,4 +45,10 @@ export interface ChronologyFormData {
   category: string;
   legalSignificance: string;
   relatedEntries: string;
+}
+
+export interface ChronologyInput {
+  name: string;
+  description?: string;
+  type?: string;
 }

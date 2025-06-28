@@ -8,16 +8,17 @@ datasource db {
 }
 
 model User {
-  id          String            @id @default(cuid())
-  clerkId     String            @unique
-  email       String            @unique
-  name        String?
-  preferences Json?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  ownedCases  Case[]
-  sharedCases CaseShare[]
-  entries     ChronologyEntry[]
+  id           String            @id @default(cuid())
+  clerkId      String            @unique
+  email        String            @unique
+  name         String?
+  preferences  Json?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  ownedCases   Case[]
+  sharedCases  CaseShare[]
+  entries      ChronologyEntry[]
+  chronologies Chronology[]
 
   @@index([clerkId])
   @@index([email])
@@ -35,14 +36,35 @@ model Case {
   updatedAt    DateTime          @updatedAt
   owner        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   shares       CaseShare[]
-  entries      ChronologyEntry[]
+  chronologies Chronology[]
+  entries      ChronologyEntry[] // Keep for backward compatibility during migration
   documents    Document[]
 
   @@index([userId])
 }
 
+model Chronology {
+  id           String            @id @default(cuid())
+  name         String
+  description  String?
+  type         String?           // e.g., "general", "financial", "medical", "communication"
+  caseId       String
+  userId       String
+  isDefault    Boolean           @default(false) // For migration: mark the default chronology
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  
+  case         Case              @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user         User              @relation(fields: [userId], references: [id])
+  entries      ChronologyEntry[]
+  
+  @@index([caseId])
+  @@index([userId])
+  @@unique([caseId, isDefault]) // Only one default chronology per case
+}
+
 model ChronologyEntry {
-  id                String     @id @default(cuid())
+  id                String       @id @default(cuid())
   date              DateTime
   time              String?
   parties           String
@@ -53,14 +75,17 @@ model ChronologyEntry {
   legalSignificance String?
   relatedEntries    String?
   caseId            String
+  chronologyId      String?      // Optional during migration
   userId            String
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
-  case              Case       @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  case              Case         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  chronology        Chronology?  @relation(fields: [chronologyId], references: [id], onDelete: Cascade)
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   documents         Document[]
 
   @@index([caseId])
+  @@index([chronologyId])
   @@index([date])
   @@index([category])
 }
