@@ -22,14 +22,14 @@ export default function Home() {
           {isSignedIn ? (
             <div className="flex gap-4 justify-center">
               <Link
-                href="/cases"
+                href="/dashboard"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                View My Cases
+                Go to Dashboard
                 <ArrowRight className="h-5 w-5" />
               </Link>
               <Link
-                href="/cases/new"
+                href="/dashboard/cases/new"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
               >
                 Create New Case
