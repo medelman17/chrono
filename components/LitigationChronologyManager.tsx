@@ -136,6 +136,12 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
     const files = event.target.files ? Array.from(event.target.files) : [];
     if (files.length === 0) return;
 
+    console.log('[DEBUG] Starting file upload process', {
+      fileCount: files.length,
+      files: files.map(f => ({ name: f.name, size: f.size, type: f.type })),
+      caseId,
+    });
+
     setIsClaudeProcessing(true);
     setClaudeResponse("Uploading and processing files...");
 
@@ -145,6 +151,8 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
       const processedFiles = [];
 
       for (const file of files) {
+        console.log(`[DEBUG] Uploading file: ${file.name}`);
+        
         const formData = new FormData();
         formData.append('file', file);
         if (caseId) {
@@ -159,6 +167,7 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
 
         if (!uploadResponse.ok) {
           const error = await uploadResponse.json();
+          console.error(`[DEBUG] Upload failed for ${file.name}:`, error);
           processedFiles.push({
             name: file.name,
             error: error.error || 'Upload failed'
@@ -167,6 +176,7 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
         }
 
         const uploadResult = await uploadResponse.json();
+        console.log(`[DEBUG] Upload successful for ${file.name}:`, uploadResult);
         processedFiles.push(uploadResult);
         
         // Add to combined content
@@ -183,6 +193,13 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
         .filter(file => file.id && !file.error)
         .map(file => file.id);
       
+      console.log('[DEBUG] Processed files summary:', {
+        totalFiles: processedFiles.length,
+        successfulUploads: documentIds.length,
+        documentIds,
+        contentLength: allContent.length,
+      });
+      
       // Analyze all files with Claude
       await analyzeWithClaude(allContent, userContext, documentIds);
     } catch (error) {
@@ -196,6 +213,13 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
 
   // Claude integration for document analysis
   const analyzeWithClaude = async (documentText: string, userContext: string = "", documentIds: string[] = []): Promise<void> => {
+    console.log('[DEBUG] Starting Claude analysis', {
+      contentLength: documentText.length,
+      userContextLength: userContext.length,
+      documentIds,
+      caseContext: caseContext?.substring(0, 100) + '...',
+    });
+    
     setIsClaudeProcessing(true);
     setClaudeResponse("");
     setPendingDocumentIds(documentIds); // Store document IDs for linking
@@ -267,32 +291,46 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
       const instructionsElement = document.getElementById("claudeInstructions") as HTMLTextAreaElement;
       
       // Call our API endpoint for Claude analysis
+      const requestBody = {
+        content: documentText,
+        filename: 'Multiple files',
+        caseContext: caseContext,
+        keyParties: keyPartiesElement?.value || initialKeyParties,
+        instructions: instructionsElement?.value || initialInstructions,
+        userContext: userContext,
+        existingEntries: entries.map(entry => ({
+          date: entry.date,
+          time: entry.time,
+          title: entry.title,
+          summary: entry.summary
+        }))
+      };
+      
+      console.log('[DEBUG] Sending analysis request', {
+        bodySize: JSON.stringify(requestBody).length,
+        existingEntriesCount: entries.length,
+      });
+      
       const analysisResponse = await fetch('/api/documents/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          content: documentText,
-          filename: 'Multiple files',
-          caseContext: caseContext,
-          keyParties: keyPartiesElement?.value || initialKeyParties,
-          instructions: instructionsElement?.value || initialInstructions,
-          userContext: userContext,
-          existingEntries: entries.map(entry => ({
-            date: entry.date,
-            time: entry.time,
-            title: entry.title,
-            summary: entry.summary
-          }))
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!analysisResponse.ok) {
+        console.error('[DEBUG] Analysis failed:', analysisResponse.status, analysisResponse.statusText);
         throw new Error(`Analysis failed: ${analysisResponse.statusText}`);
       }
 
       const analysisData = await analysisResponse.json();
+      console.log('[DEBUG] Analysis response received:', {
+        hasEntries: !!analysisData.entries,
+        entriesCount: analysisData.entries?.length || 0,
+        hasError: !!analysisData.error,
+        hasRawResponse: !!analysisData.rawResponse,
+      });
       
       // Handle the response which contains entries array
       if (analysisData.error && analysisData.rawResponse) {
@@ -317,9 +355,12 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
       const analysisResult = analysisData.entries && analysisData.entries.length > 0 
         ? analysisData.entries[0] 
         : {};
+      
+      console.log('[DEBUG] Analysis result:', analysisResult);
+      console.log('[DEBUG] Pending document IDs for linking:', documentIds);
 
       // Pre-populate form with Claude's analysis
-      setFormData({
+      const formDataValues = {
         date: analysisResult.date || "",
         time: analysisResult.time || "",
         parties: analysisResult.parties || "",
@@ -329,7 +370,10 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
         category: analysisResult.category || "",
         legalSignificance: analysisResult.legalSignificance || "",
         relatedEntries: analysisResult.relatedEntries || "",
-      });
+      };
+      
+      console.log('[DEBUG] Setting form data:', formDataValues);
+      setFormData(formDataValues);
 
       // Show Claude's response and any questions
       let responseText = `Claude has analyzed the document and pre-populated the form below.\n\n`;
@@ -359,6 +403,13 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
       return;
     }
 
+    console.log('[DEBUG] Saving entry', {
+      isEdit: !!editingEntry,
+      formData,
+      pendingDocumentIds,
+      caseId,
+    });
+
     try {
       if (caseId) {
         // Save to database if we have a caseId
@@ -380,17 +431,26 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
           ));
         } else {
           // Create new entry
+          const requestBody = {
+            ...formData,
+            documentIds: pendingDocumentIds, // Include document IDs to link
+          };
+          
+          console.log('[DEBUG] Creating new entry with body:', requestBody);
+          
           const response = await fetch(`/api/cases/${caseId}/entries`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ...formData,
-              documentIds: pendingDocumentIds, // Include document IDs to link
-            }),
+            body: JSON.stringify(requestBody),
           });
           
-          if (!response.ok) throw new Error('Failed to create entry');
+          if (!response.ok) {
+            console.error('[DEBUG] Failed to create entry:', response.status, response.statusText);
+            throw new Error('Failed to create entry');
+          }
+          
           const newEntry = await response.json();
+          console.log('[DEBUG] Entry created successfully:', newEntry);
           
           setEntries((prev) =>
             [...prev, { ...newEntry, date: new Date(newEntry.date).toISOString().split('T')[0] }].sort(

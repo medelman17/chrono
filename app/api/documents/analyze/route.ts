@@ -6,6 +6,8 @@ const anthropic = new Anthropic({
 });
 
 export async function POST(req: NextRequest) {
+  console.log('[DEBUG] Document analyze API called');
+  
   try {
     const { 
       content, 
@@ -16,6 +18,15 @@ export async function POST(req: NextRequest) {
       userContext,
       existingEntries 
     } = await req.json();
+    
+    console.log('[DEBUG] Analysis request:', {
+      contentLength: content?.length || 0,
+      filename,
+      hasCaseContext: !!caseContext,
+      hasKeyParties: !!keyParties,
+      hasInstructions: !!instructions,
+      existingEntriesCount: existingEntries?.length || 0,
+    });
 
     if (!content) {
       return NextResponse.json({ error: "No content provided" }, { status: 400 });
@@ -85,6 +96,8 @@ IMPORTANT:
 - You may create multiple entries if the document contains multiple distinct events
 - Respond ONLY with valid JSON. Do not include any text outside the JSON structure`;
 
+    console.log('[DEBUG] Sending request to Claude API');
+    
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 4000,
@@ -96,6 +109,8 @@ IMPORTANT:
         },
       ],
     });
+    
+    console.log('[DEBUG] Claude API response received');
 
     // Parse the response
     const responseText = message.content[0].type === "text" ? message.content[0].text : "";
@@ -105,10 +120,15 @@ IMPORTANT:
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
+        console.log('[DEBUG] Successfully parsed response:', {
+          hasEntries: !!parsed.entries,
+          entriesCount: parsed.entries?.length || 0,
+        });
         return NextResponse.json(parsed);
       }
     } catch (parseError) {
-      console.error("Error parsing Claude response:", parseError);
+      console.error("[DEBUG] Error parsing Claude response:", parseError);
+      console.error("[DEBUG] Raw response:", responseText.substring(0, 500));
     }
 
     // If parsing fails, return the raw response

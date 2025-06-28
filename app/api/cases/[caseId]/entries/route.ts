@@ -68,9 +68,22 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ caseId: string }> }
 ) {
+  console.log('[DEBUG] Create entry API called');
+  
   try {
     const { caseId } = await params;
     const body = await req.json();
+    
+    console.log('[DEBUG] Create entry request:', {
+      caseId,
+      hasDocumentIds: !!body.documentIds,
+      documentIds: body.documentIds,
+      entryData: {
+        date: body.date,
+        title: body.title,
+        parties: body.parties,
+      }
+    });
     
     const user = await getCurrentUser();
     
@@ -115,9 +128,20 @@ export async function POST(
       },
     });
 
+    console.log('[DEBUG] Entry created:', {
+      entryId: newEntry.id,
+      date: newEntry.date,
+      title: newEntry.title,
+    });
+
     // Link documents to the entry if document IDs were provided
     if (body.documentIds && body.documentIds.length > 0) {
-      await prisma.document.updateMany({
+      console.log('[DEBUG] Linking documents to entry:', {
+        entryId: newEntry.id,
+        documentIds: body.documentIds,
+      });
+      
+      const updateResult = await prisma.document.updateMany({
         where: {
           id: { in: body.documentIds },
           caseId: caseId, // Ensure documents belong to the same case
@@ -125,6 +149,10 @@ export async function POST(
         data: {
           entryId: newEntry.id,
         },
+      });
+      
+      console.log('[DEBUG] Documents linked:', {
+        documentsUpdated: updateResult.count,
       });
     }
 
@@ -143,6 +171,11 @@ export async function POST(
       },
     });
 
+    console.log('[DEBUG] Returning entry with documents:', {
+      entryId: entryWithDocuments?.id,
+      documentsCount: entryWithDocuments?.documents?.length || 0,
+    });
+    
     return NextResponse.json(entryWithDocuments, { status: 201 });
   } catch (error) {
     console.error('Error creating entry:', error);

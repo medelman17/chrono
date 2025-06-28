@@ -4,17 +4,87 @@ import { createServerSupabaseClient, STORAGE_BUCKETS } from '@/lib/supabase-serv
 import { prisma } from '@/lib/prisma';
 import mammoth from 'mammoth';
 import { LlamaParse } from 'llama-parse';
+import Anthropic from '@anthropic-ai/sdk';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60; // 60 seconds timeout
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+});
+
+async function analyzeImageWithClaude(buffer: Buffer, filename: string, mimeType: string): Promise<string> {
+  try {
+    console.log(`[DEBUG] Analyzing image with Claude Vision: ${filename}`);
+    
+    // Convert buffer to base64
+    const base64Image = buffer.toString('base64');
+    
+    // Map MIME types to Claude's accepted formats
+    let mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp" = "image/jpeg";
+    if (mimeType === "image/png") mediaType = "image/png";
+    else if (mimeType === "image/gif") mediaType = "image/gif";
+    else if (mimeType === "image/webp") mediaType = "image/webp";
+    
+    const message = await anthropic.messages.create({
+      model: "claude-3-5-sonnet-20241022",
+      max_tokens: 1000,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Please analyze this image and provide a detailed description of what you see. This image is being used as evidence in a litigation case, so please be thorough and objective in your description. Include:
+              
+1. What type of document or image this appears to be
+2. Any visible text, numbers, dates, or identifying information
+3. The overall content and context of the image
+4. Any notable details that might be legally relevant
+5. The quality and condition of the image/document
+
+Format your response as a clear, professional description that could be used in legal documentation.`
+            },
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: mediaType,
+                data: base64Image
+              }
+            }
+          ]
+        }
+      ]
+    });
+    
+    const description = message.content[0].type === "text" ? message.content[0].text : "";
+    console.log(`[DEBUG] Claude Vision analysis complete for ${filename}`);
+    
+    return `[Image Analysis of ${filename}]\n\n${description}`;
+  } catch (error) {
+    console.error(`[DEBUG] Claude Vision error for ${filename}:`, error);
+    throw error;
+  }
+}
 
 async function parseFileContent(buffer: Buffer, filename: string, mimeType: string): Promise<string> {
   const ext = filename.toLowerCase().split('.').pop() || '';
 
   try {
-    // Check if we should use LlamaParse for this file type
-    const llamaParseTypes = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'bmp'];
-    if (llamaParseTypes.includes(ext) && process.env.LLAMA_CLOUD_API_KEY) {
+    // Use Claude Vision for image files
+    const imageTypes = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff', 'webp'];
+    if (imageTypes.includes(ext)) {
+      try {
+        return await analyzeImageWithClaude(buffer, filename, mimeType);
+      } catch (claudeError) {
+        console.error(`Claude Vision error for ${filename}:`, claudeError);
+        return `[Image Processing Error] Unable to analyze image: ${filename}. Please describe the content manually.`;
+      }
+    }
+    
+    // Use LlamaParse for PDFs (text extraction)
+    if (ext === 'pdf' && process.env.LLAMA_CLOUD_API_KEY) {
       try {
         const parser = new LlamaParse({
           apiKey: process.env.LLAMA_CLOUD_API_KEY,
@@ -34,12 +104,7 @@ async function parseFileContent(buffer: Buffer, filename: string, mimeType: stri
         }
       } catch (llamaError) {
         console.error(`LlamaParse error for ${filename}:`, llamaError);
-        // Fall back to error message
-        if (ext === 'pdf') {
-          return `[PDF Processing Error] Unable to process PDF: ${filename}. Please copy and paste the content manually.`;
-        } else {
-          return `[Image Processing Error] Unable to process image: ${filename}. Please describe the content manually.`;
-        }
+        return `[PDF Processing Error] Unable to process PDF: ${filename}. Please copy and paste the content manually.`;
       }
     }
 
@@ -64,6 +129,8 @@ async function parseFileContent(buffer: Buffer, filename: string, mimeType: stri
 }
 
 export async function POST(req: NextRequest) {
+  console.log('[DEBUG] Document upload API called');
+  
   try {
     // Check authentication
     const user = await getCurrentUser();
@@ -81,6 +148,14 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const caseId = formData.get('caseId') as string;
+
+    console.log('[DEBUG] Upload request:', {
+      fileName: file?.name,
+      fileSize: file?.size,
+      fileType: file?.type,
+      caseId,
+      userId: user.id,
+    });
 
     if (!file) {
       return NextResponse.json(
@@ -125,6 +200,10 @@ export async function POST(req: NextRequest) {
     
     // Extract text content for analysis
     const textContent = await parseFileContent(buffer, file.name, file.type);
+    console.log('[DEBUG] Text extraction complete:', {
+      contentLength: textContent.length,
+      preview: textContent.substring(0, 200),
+    });
 
     // Generate unique file path
     const timestamp = Date.now();
@@ -176,6 +255,12 @@ export async function POST(req: NextRequest) {
         caseId: caseId,
         uploadedBy: user.id,
       },
+    });
+    
+    console.log('[DEBUG] Document saved to database:', {
+      documentId: document.id,
+      filename: document.filename,
+      caseId: document.caseId,
     });
 
     return NextResponse.json({
