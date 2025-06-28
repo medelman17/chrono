@@ -74,18 +74,21 @@ export async function PUT(
       );
     }
 
+    // Build update data object - only include fields that are provided
+    const updateData: any = {};
+    
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.keyParties !== undefined) updateData.keyParties = body.keyParties;
+    if (body.caseContext !== undefined) updateData.context = body.caseContext;
+    if (body.instructions !== undefined) updateData.instructions = body.instructions;
+
     const updatedCase = await prisma.case.update({
       where: {
         id: caseId,
         userId: user.id,
       },
-      data: {
-        name: body.name,
-        description: body.description,
-        keyParties: body.keyParties,
-        context: body.caseContext,
-        instructions: body.instructions,
-      },
+      data: updateData,
     });
 
     return NextResponse.json(updatedCase);

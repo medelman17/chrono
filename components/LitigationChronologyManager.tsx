@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, ChangeEvent } from "react";
+import React, { useState, useEffect, ChangeEvent, useCallback, useRef } from "react";
 import { ChronologyEntry, ChronologyFormData } from "@/types/chronology";
 import {
   Plus,
@@ -14,6 +14,7 @@ import {
   Edit3,
   MessageSquare,
   Upload,
+  Save,
 } from "lucide-react";
 
 interface LitigationChronologyManagerProps {
@@ -41,7 +42,12 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
   const [isClaudeProcessing, setIsClaudeProcessing] = useState(false);
   const [claudeResponse, setClaudeResponse] = useState("");
   const [caseContext, setCaseContext] = useState(initialCaseContext);
+  const [keyParties, setKeyParties] = useState(initialKeyParties);
+  const [instructions, setInstructions] = useState(initialInstructions);
   const [showCaseContext, setShowCaseContext] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Form state for new/edited entries
   const [formData, setFormData] = useState<ChronologyFormData>({
@@ -456,6 +462,71 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
     setShowAddForm(true);
   };
 
+  // Save case context data
+  const saveCaseContext = async (showAlert = true) => {
+    if (!caseId) return;
+    
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/cases/${caseId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          caseContext,
+          keyParties,
+          instructions,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save case context');
+      }
+
+      setLastSaved(new Date());
+      
+      // Show success feedback only if requested
+      if (showAlert) {
+        alert('Case context saved successfully!');
+      }
+    } catch (error) {
+      console.error('Error saving case context:', error);
+      if (showAlert) {
+        alert('Failed to save case context. Please try again.');
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Debounced auto-save function
+  const debouncedSave = useCallback(() => {
+    if (!caseId) return;
+    
+    // Clear existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    // Set new timeout for auto-save
+    saveTimeoutRef.current = setTimeout(() => {
+      saveCaseContext(false); // Don't show alert for auto-save
+    }, 2000); // Auto-save after 2 seconds of inactivity
+  }, [caseId, caseContext, keyParties, instructions]);
+
+  // Trigger auto-save when context data changes
+  useEffect(() => {
+    debouncedSave();
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [caseContext, keyParties, instructions, debouncedSave]);
+
   // Filter entries based on search and filters
   const filteredEntries = entries.filter((entry) => {
     const matchesSearch =
@@ -605,7 +676,8 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
                     rows={4}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     id="keyParties"
-                    defaultValue={initialKeyParties}
+                    value={keyParties}
+                    onChange={(e) => setKeyParties(e.target.value)}
                   />
                 </div>
 
@@ -622,7 +694,8 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
                     rows={4}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     id="claudeInstructions"
-                    defaultValue={initialInstructions}
+                    value={instructions}
+                    onChange={(e) => setInstructions(e.target.value)}
                   />
                 </div>
               </div>
@@ -634,6 +707,26 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
                   and ask relevant clarifying questions. Update this as your case develops.
                 </p>
               </div>
+
+              {/* Save button for case context */}
+              {caseId && (
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-gray-500">
+                    {isSaving && "Saving..."}
+                    {!isSaving && lastSaved && (
+                      <span>Last saved: {lastSaved.toLocaleTimeString()}</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => saveCaseContext(true)}
+                    disabled={isSaving}
+                    className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Save size={16} />
+                    {isSaving ? 'Saving...' : 'Save Case Context'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
