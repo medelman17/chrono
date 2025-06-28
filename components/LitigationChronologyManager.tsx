@@ -15,6 +15,7 @@ import {
   MessageSquare,
   Upload,
   Save,
+  ExternalLink,
 } from "lucide-react";
 
 interface LitigationChronologyManagerProps {
@@ -48,6 +49,7 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [pendingDocumentIds, setPendingDocumentIds] = useState<string[]>([]);
 
   // Form state for new/edited entries
   const [formData, setFormData] = useState<ChronologyFormData>({
@@ -177,8 +179,13 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
       // Get additional context from user input
       const userContext = (document.getElementById("userContext") as HTMLTextAreaElement)?.value || "";
 
+      // Extract document IDs from processed files
+      const documentIds = processedFiles
+        .filter(file => file.id && !file.error)
+        .map(file => file.id);
+      
       // Analyze all files with Claude
-      await analyzeWithClaude(allContent, userContext);
+      await analyzeWithClaude(allContent, userContext, documentIds);
     } catch (error) {
       setClaudeResponse(`Error processing files: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
@@ -189,9 +196,10 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
 
 
   // Claude integration for document analysis
-  const analyzeWithClaude = async (documentText: string, userContext: string = ""): Promise<void> => {
+  const analyzeWithClaude = async (documentText: string, userContext: string = "", documentIds: string[] = []): Promise<void> => {
     setIsClaudeProcessing(true);
     setClaudeResponse("");
+    setPendingDocumentIds(documentIds); // Store document IDs for linking
 
     try {
       // const existingChronologyContext =
@@ -376,7 +384,10 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
           const response = await fetch(`/api/cases/${caseId}/entries`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData),
+            body: JSON.stringify({
+              ...formData,
+              documentIds: pendingDocumentIds, // Include document IDs to link
+            }),
           });
           
           if (!response.ok) throw new Error('Failed to create entry');
@@ -431,6 +442,7 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
     setShowAddForm(false);
     setEditingEntry(null);
     setClaudeResponse("");
+    setPendingDocumentIds([]); // Clear pending document IDs
   };
 
   // Delete entry
@@ -460,6 +472,42 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
     setFormData(entry);
     setEditingEntry(entry);
     setShowAddForm(true);
+  };
+
+  // Handle document download
+  const handleDocumentDownload = async (documentId: string) => {
+    try {
+      const response = await fetch(`/api/documents/${documentId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to download document');
+      }
+      
+      // Get the filename from the Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+      const filename = filenameMatch ? filenameMatch[1] : 'download';
+      
+      // Create a blob from the response
+      const blob = await response.blob();
+      
+      // Create a temporary URL for the blob
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create a temporary anchor element and trigger download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      alert('Failed to download document. Please try again.');
+    }
   };
 
   // Save case context data
@@ -1120,7 +1168,27 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
                   )}
 
                   <div className="flex justify-between items-center text-xs text-gray-500 mt-3">
-                    <span>{entry.source && `Source: ${entry.source}`}</span>
+                    <div className="flex items-center gap-3">
+                      {entry.source && <span>Source: {entry.source}</span>}
+                      {entry.documents && entry.documents.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-400">|</span>
+                          <span className="text-gray-600">Documents:</span>
+                          {entry.documents.map((doc, idx) => (
+                            <button
+                              key={doc.id}
+                              onClick={() => handleDocumentDownload(doc.id)}
+                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline"
+                              title={`Download ${doc.filename}`}
+                            >
+                              <FileText size={12} />
+                              <span>{doc.filename}</span>
+                              {idx < entry.documents.length - 1 && <span className="text-gray-400">,</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <span>
                       Created: {new Date(entry.createdAt).toLocaleDateString()}
                       {entry.updatedAt !== entry.createdAt &&

@@ -38,6 +38,16 @@ export async function GET(
       where: {
         caseId: caseId,
       },
+      include: {
+        documents: {
+          select: {
+            id: true,
+            filename: true,
+            fileType: true,
+            fileSize: true,
+          },
+        },
+      },
       orderBy: {
         date: 'asc',
       },
@@ -105,7 +115,35 @@ export async function POST(
       },
     });
 
-    return NextResponse.json(newEntry, { status: 201 });
+    // Link documents to the entry if document IDs were provided
+    if (body.documentIds && body.documentIds.length > 0) {
+      await prisma.document.updateMany({
+        where: {
+          id: { in: body.documentIds },
+          caseId: caseId, // Ensure documents belong to the same case
+        },
+        data: {
+          entryId: newEntry.id,
+        },
+      });
+    }
+
+    // Fetch the entry with documents included
+    const entryWithDocuments = await prisma.chronologyEntry.findUnique({
+      where: { id: newEntry.id },
+      include: {
+        documents: {
+          select: {
+            id: true,
+            filename: true,
+            fileType: true,
+            fileSize: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(entryWithDocuments, { status: 201 });
   } catch (error) {
     console.error('Error creating entry:', error);
     return NextResponse.json(
