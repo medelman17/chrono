@@ -151,12 +151,12 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
 
     if (uploadedDocIds.length > 0) {
       setPendingDocumentIds(prev => [...prev, ...uploadedDocIds]);
-      await processDocumentsWithClaude(uploadedDocIds);
+      await processDocumentsWithClaude();
     }
   };
 
   // Process uploaded documents with Claude
-  const processDocumentsWithClaude = async (documentIds: string[]) => {
+  const processDocumentsWithClaude = async () => {
     setIsClaudeProcessing(true);
     setClaudeResponse("");
 

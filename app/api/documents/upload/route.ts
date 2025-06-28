@@ -6,6 +6,14 @@ import mammoth from "mammoth";
 import { LlamaParse } from "llama-parse";
 import Anthropic from "@anthropic-ai/sdk";
 import exifr from "exifr";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+import { createCanvas } from "canvas";
+
+// Configure PDF.js to use local worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/legacy/build/pdf.worker.mjs',
+  import.meta.url,
+).toString();
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // 60 seconds timeout
@@ -116,6 +124,79 @@ async function extractImageMetadata(buffer: Buffer, filename: string) {
   } catch (error) {
     console.error(`[DEBUG] Error extracting metadata from ${filename}:`, error);
     return null;
+  }
+}
+
+async function convertPDFPageToImage(page: pdfjsLib.PDFPageProxy): Promise<Buffer> {
+  const viewport = page.getViewport({ scale: 2.0 }); // Higher scale for better quality
+  const canvas = createCanvas(viewport.width, viewport.height);
+  const context = canvas.getContext('2d');
+
+  // Render PDF page to canvas
+  await page.render({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    canvasContext: context as any,
+    viewport: viewport,
+  }).promise;
+
+  // Convert canvas to PNG buffer
+  return canvas.toBuffer('image/png');
+}
+
+async function analyzePDFWithClaude(buffer: Buffer, filename: string): Promise<string> {
+  try {
+    console.log(`[DEBUG] Converting PDF to images for Claude Vision analysis: ${filename}`);
+    
+    // Load the PDF
+    const loadingTask = pdfjsLib.getDocument({
+      data: new Uint8Array(buffer),
+      useSystemFonts: true,
+    });
+    const pdf = await loadingTask.promise;
+    const numPages = pdf.numPages;
+    
+    console.log(`[DEBUG] PDF has ${numPages} pages`);
+    
+    let fullContent = `[PDF Analysis of ${filename}]\n`;
+    fullContent += `Total Pages: ${numPages}\n\n`;
+    
+    // Process each page (limit to first 10 pages to avoid timeout)
+    const maxPages = Math.min(numPages, 10);
+    
+    for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
+      try {
+        console.log(`[DEBUG] Processing page ${pageNum} of ${numPages}`);
+        
+        const page = await pdf.getPage(pageNum);
+        const imageBuffer = await convertPDFPageToImage(page);
+        
+        // Analyze this page with Claude
+        const pageAnalysis = await analyzeImageWithClaude(
+          imageBuffer, 
+          `${filename} - Page ${pageNum}`, 
+          'image/png'
+        );
+        
+        fullContent += `\n--- PAGE ${pageNum} ---\n`;
+        fullContent += pageAnalysis;
+        fullContent += '\n';
+        
+      } catch (pageError) {
+        console.error(`[DEBUG] Error processing page ${pageNum}:`, pageError);
+        fullContent += `\n--- PAGE ${pageNum} ---\n`;
+        fullContent += `[Error processing page ${pageNum}]\n`;
+      }
+    }
+    
+    if (numPages > maxPages) {
+      fullContent += `\n[Note: PDF contains ${numPages} pages. Only the first ${maxPages} pages were analyzed due to processing limits. Please split large PDFs into smaller sections for complete analysis.]\n`;
+    }
+    
+    return fullContent;
+    
+  } catch (error) {
+    console.error(`[DEBUG] PDF to image conversion error for ${filename}:`, error);
+    throw error;
   }
 }
 
@@ -264,28 +345,61 @@ async function parseFileContent(buffer: Buffer, filename: string, mimeType: stri
       }
     }
 
-    // Use LlamaParse for PDFs (text extraction)
-    if (ext === "pdf" && process.env.LLAMA_CLOUD_API_KEY) {
-      try {
-        const parser = new LlamaParse({
-          apiKey: process.env.LLAMA_CLOUD_API_KEY,
-        });
+    // Handle PDFs
+    if (ext === "pdf") {
+      // First try LlamaParse if available
+      if (process.env.LLAMA_CLOUD_API_KEY) {
+        try {
+          const parser = new LlamaParse({
+            apiKey: process.env.LLAMA_CLOUD_API_KEY,
+          });
 
-        // Create a Blob from the buffer
-        const blob = new Blob([buffer], { type: mimeType });
+          // Create a Blob from the buffer
+          const blob = new Blob([buffer], { type: mimeType });
 
-        // Parse the document
-        const result = await parser.parseFile(blob);
+          // Parse the document
+          const result = await parser.parseFile(blob);
 
-        // Extract text from the result
-        if (result && result.markdown) {
-          return result.markdown;
-        } else {
-          throw new Error("No text extracted from document");
+          // Extract text from the result
+          if (result && result.markdown) {
+            return result.markdown;
+          } else {
+            throw new Error("No text extracted from document");
+          }
+        } catch (llamaError) {
+          console.error(`LlamaParse error for ${filename}:`, llamaError);
+          
+          // Check if this is a binary/image-based PDF that needs OCR
+          const errorMessage = llamaError instanceof Error ? llamaError.message : String(llamaError);
+          if (errorMessage.includes("binary") || errorMessage.includes("Gmail") || errorMessage.includes("image")) {
+            console.log(`[DEBUG] PDF appears to be image-based, falling back to Claude Vision analysis`);
+            
+            // Fall back to PDF to image conversion
+            try {
+              return await analyzePDFWithClaude(buffer, filename);
+            } catch (visionError) {
+              console.error(`[DEBUG] Claude Vision fallback failed:`, visionError);
+              return `[PDF Processing Error] This appears to be a scanned or image-based PDF. Both text extraction and visual analysis failed. Please either:
+1. Copy and paste the content manually
+2. Use an OCR tool to extract the text
+3. Upload the individual pages as images
+
+Filename: ${filename}
+Error: ${visionError}`;
+            }
+          }
+          
+          return `[PDF Processing Error] Unable to process PDF: ${filename}. Error: ${errorMessage}. Please copy and paste the content manually.`;
         }
-      } catch (llamaError) {
-        console.error(`LlamaParse error for ${filename}:`, llamaError);
-        return `[PDF Processing Error] Unable to process PDF: ${filename}. Please copy and paste the content manually.`;
+      } else {
+        // No LlamaParse API key, use Claude Vision for all PDFs
+        console.log(`[DEBUG] No LlamaParse API key, using Claude Vision for PDF analysis`);
+        try {
+          return await analyzePDFWithClaude(buffer, filename);
+        } catch (visionError) {
+          console.error(`[DEBUG] Claude Vision PDF analysis failed:`, visionError);
+          return `[PDF Processing Error] Unable to analyze PDF visually. Error: ${visionError}. Please copy and paste the content manually.`;
+        }
       }
     }
 
