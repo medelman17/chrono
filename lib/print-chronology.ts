@@ -104,127 +104,117 @@ export function generatePrintHTML(
           max-width: 100%;
         }
 
-        /* Modern entry styling */
+        /* Compact entry styling for better scanning */
         .entry {
-          margin-bottom: 2em;
+          margin-bottom: 0.75em;
           page-break-inside: avoid;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          padding: 1.5em;
-          background: #ffffff;
-          box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+          padding: 0.5em 0;
+          border-bottom: 1px solid #e5e7eb;
         }
 
-        .entry-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1em;
-          padding-bottom: 0.75em;
-          border-bottom: 2px solid #f3f4f6;
+        .entry:last-child {
+          border-bottom: none;
         }
 
-        .entry-date-group {
+        .entry-row {
           display: flex;
-          align-items: center;
           gap: 1em;
+          align-items: baseline;
         }
 
-        .entry-date {
+        .entry-date-col {
+          flex-shrink: 0;
+          width: 110px;
           font-weight: 600;
-          color: #1f2937;
-          font-size: 1.1em;
+          color: #374151;
+          font-size: 0.875em;
         }
 
         .entry-time {
           color: #6b7280;
-          font-size: 0.95em;
+          font-size: 0.75em;
+          display: block;
         }
 
-        .entry-category {
-          display: inline-block;
-          padding: 0.25em 0.75em;
-          background-color: #dbeafe;
-          color: #1e40af;
-          font-size: 0.85em;
-          font-weight: 500;
-          border-radius: 9999px;
-          text-transform: uppercase;
-          letter-spacing: 0.025em;
+        .entry-content {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .entry-header-line {
+          display: flex;
+          align-items: baseline;
+          gap: 0.75em;
+          margin-bottom: 0.25em;
         }
 
         .entry-title {
-          font-size: 1.25em;
           font-weight: 600;
           color: #111827;
-          margin-bottom: 0.75em;
-          line-height: 1.4;
+          font-size: 0.95em;
+          line-height: 1.3;
+          flex: 1;
+        }
+
+        .entry-category {
+          flex-shrink: 0;
+          font-size: 0.7em;
+          font-weight: 500;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.025em;
+          padding: 0.15em 0.5em;
+          background-color: #f3f4f6;
+          border-radius: 4px;
         }
 
         .entry-parties {
-          display: flex;
-          align-items: center;
-          gap: 0.5em;
-          margin-bottom: 1em;
+          font-size: 0.8em;
           color: #6b7280;
-          font-size: 0.95em;
-        }
-
-        .entry-parties::before {
-          content: "👥";
-          font-size: 1.1em;
+          margin-bottom: 0.25em;
+          font-style: italic;
         }
 
         .entry-summary {
           color: #374151;
-          margin-bottom: 1em;
-          line-height: 1.7;
-        }
-
-        .entry-footer {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 1.5em;
-          margin-top: 1.25em;
-          padding-top: 1em;
-          border-top: 1px solid #f3f4f6;
+          font-size: 0.875em;
+          line-height: 1.4;
+          margin-bottom: 0.25em;
         }
 
         .entry-metadata {
           display: flex;
-          align-items: center;
-          gap: 0.4em;
-          font-size: 0.875em;
-          color: #6b7280;
+          gap: 1em;
+          font-size: 0.75em;
+          color: #9ca3af;
+          margin-top: 0.25em;
         }
 
-        .entry-metadata-icon {
-          width: 16px;
-          height: 16px;
+        .metadata-item {
+          display: flex;
+          align-items: center;
+          gap: 0.25em;
         }
 
         .legal-significance {
-          margin-top: 1em;
-          padding: 1em;
+          margin-top: 0.5em;
+          padding: 0.4em 0.6em;
           background-color: #fef3c7;
-          border: 1px solid #fbbf24;
-          border-radius: 6px;
-          font-size: 0.95em;
-        }
-
-        .legal-significance-header {
-          font-weight: 600;
-          color: #92400e;
-          margin-bottom: 0.5em;
-          display: flex;
-          align-items: center;
-          gap: 0.5em;
+          border-left: 3px solid #f59e0b;
+          font-size: 0.8em;
+          line-height: 1.4;
         }
 
         .legal-significance-content {
-          color: #78350f;
-          line-height: 1.6;
+          color: #92400e;
         }
+
+        /* Category-specific colors */
+        .entry-category.communication { background-color: #dbeafe; color: #1e40af; }
+        .entry-category.financial { background-color: #d1fae5; color: #047857; }
+        .entry-category.legal { background-color: #fce7f3; color: #be185d; }
+        .entry-category.meeting { background-color: #e9d5ff; color: #7c3aed; }
+        .entry-category.document { background-color: #fed7aa; color: #c2410c; }
 
         /* Table of Contents styling */
         .toc {
@@ -409,106 +399,100 @@ export function generatePrintHTML(
         /* Copy all print styles to screen for preview */
         .content { max-width: 100%; }
         .entry {
-          margin-bottom: 2em;
+          margin-bottom: 0.75em;
           page-break-inside: avoid;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          padding: 1.5em;
-          background: #ffffff;
-          box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+          padding: 0.5em 0;
+          border-bottom: 1px solid #e5e7eb;
         }
-        .entry-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1em;
-          padding-bottom: 0.75em;
-          border-bottom: 2px solid #f3f4f6;
+        .entry:last-child {
+          border-bottom: none;
         }
-        .entry-date-group {
+        .entry-row {
           display: flex;
-          align-items: center;
           gap: 1em;
+          align-items: baseline;
         }
-        .entry-date {
+        .entry-date-col {
+          flex-shrink: 0;
+          width: 110px;
           font-weight: 600;
-          color: #1f2937;
-          font-size: 1.1em;
+          color: #374151;
+          font-size: 0.875em;
         }
         .entry-time {
           color: #6b7280;
-          font-size: 0.95em;
+          font-size: 0.75em;
+          display: block;
         }
-        .entry-category {
-          display: inline-block;
-          padding: 0.25em 0.75em;
-          background-color: #dbeafe;
-          color: #1e40af;
-          font-size: 0.85em;
-          font-weight: 500;
-          border-radius: 9999px;
-          text-transform: uppercase;
-          letter-spacing: 0.025em;
+        .entry-content {
+          flex: 1;
+          min-width: 0;
+        }
+        .entry-header-line {
+          display: flex;
+          align-items: baseline;
+          gap: 0.75em;
+          margin-bottom: 0.25em;
         }
         .entry-title {
-          font-size: 1.25em;
           font-weight: 600;
           color: #111827;
-          margin-bottom: 0.75em;
-          line-height: 1.4;
+          font-size: 0.95em;
+          line-height: 1.3;
+          flex: 1;
+        }
+        .entry-category {
+          flex-shrink: 0;
+          font-size: 0.7em;
+          font-weight: 500;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.025em;
+          padding: 0.15em 0.5em;
+          background-color: #f3f4f6;
+          border-radius: 4px;
         }
         .entry-parties {
-          display: flex;
-          align-items: center;
-          gap: 0.5em;
-          margin-bottom: 1em;
+          font-size: 0.8em;
           color: #6b7280;
-          font-size: 0.95em;
-        }
-        .entry-parties::before {
-          content: "👥";
-          font-size: 1.1em;
+          margin-bottom: 0.25em;
+          font-style: italic;
         }
         .entry-summary {
           color: #374151;
-          margin-bottom: 1em;
-          line-height: 1.7;
-        }
-        .entry-footer {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 1.5em;
-          margin-top: 1.25em;
-          padding-top: 1em;
-          border-top: 1px solid #f3f4f6;
+          font-size: 0.875em;
+          line-height: 1.4;
+          margin-bottom: 0.25em;
         }
         .entry-metadata {
           display: flex;
-          align-items: center;
-          gap: 0.4em;
-          font-size: 0.875em;
-          color: #6b7280;
+          gap: 1em;
+          font-size: 0.75em;
+          color: #9ca3af;
+          margin-top: 0.25em;
         }
-        .legal-significance {
-          margin-top: 1em;
-          padding: 1em;
-          background-color: #fef3c7;
-          border: 1px solid #fbbf24;
-          border-radius: 6px;
-          font-size: 0.95em;
-        }
-        .legal-significance-header {
-          font-weight: 600;
-          color: #92400e;
-          margin-bottom: 0.5em;
+        .metadata-item {
           display: flex;
           align-items: center;
-          gap: 0.5em;
+          gap: 0.25em;
+        }
+        .legal-significance {
+          margin-top: 0.5em;
+          padding: 0.4em 0.6em;
+          background-color: #fef3c7;
+          border-left: 3px solid #f59e0b;
+          font-size: 0.8em;
+          line-height: 1.4;
         }
         .legal-significance-content {
-          color: #78350f;
-          line-height: 1.6;
+          color: #92400e;
         }
+        /* Category-specific colors */
+        .entry-category.communication { background-color: #dbeafe; color: #1e40af; }
+        .entry-category.financial { background-color: #d1fae5; color: #047857; }
+        .entry-category.legal { background-color: #fce7f3; color: #be185d; }
+        .entry-category.meeting { background-color: #e9d5ff; color: #7c3aed; }
+        .entry-category.document { background-color: #fed7aa; color: #c2410c; }
         .toc-entry {
           display: flex;
           align-items: baseline;
@@ -668,58 +652,65 @@ export function generatePrintHTML(
     </div>
   ` : "";
 
+  // Helper to get category class
+  const getCategoryClass = (category: string): string => {
+    const categoryMap: { [key: string]: string } = {
+      'Communication': 'communication',
+      'Financial Transaction': 'financial',
+      'Legal Filing': 'legal',
+      'Meeting/Conference': 'meeting',
+      'Document Creation': 'document',
+    };
+    return categoryMap[category] || '';
+  };
+
   const entriesHTML = sortedEntries
     .map(
       (entry, index) => `
-    <div class="entry ${index > 0 && index % 3 === 0 ? "page-break" : "avoid-break"}">
-      <div class="entry-header">
-        <div class="entry-date-group">
-          <span class="entry-date">${formatDate(entry.date)}</span>
+    <div class="entry ${index > 0 && index % 10 === 0 ? "page-break" : ""}">
+      <div class="entry-row">
+        <div class="entry-date-col">
+          ${formatDateCompact(entry.date)}
           ${entry.time ? `<span class="entry-time">${entry.time}</span>` : ""}
         </div>
-        ${entry.category ? `<span class="entry-category">${entry.category}</span>` : ""}
-      </div>
-      
-      <div class="entry-title">${escapeHtml(entry.title)}</div>
-      
-      ${entry.parties ? `<div class="entry-parties">${escapeHtml(entry.parties)}</div>` : ""}
-      
-      <div class="entry-summary">${escapeHtml(entry.summary)}</div>
-      
-      ${entry.legalSignificance ? `
-        <div class="legal-significance">
-          <div class="legal-significance-header">⚖️ Legal Significance</div>
-          <div class="legal-significance-content">${escapeHtml(entry.legalSignificance)}</div>
+        <div class="entry-content">
+          <div class="entry-header-line">
+            <div class="entry-title">${escapeHtml(entry.title)}</div>
+            ${entry.category ? `<span class="entry-category ${getCategoryClass(entry.category)}">${entry.category}</span>` : ""}
+          </div>
+          
+          ${entry.parties ? `<div class="entry-parties">${escapeHtml(entry.parties)}</div>` : ""}
+          
+          <div class="entry-summary">${escapeHtml(entry.summary)}</div>
+          
+          ${entry.legalSignificance ? `
+            <div class="legal-significance">
+              <div class="legal-significance-content">
+                <strong>Legal:</strong> ${escapeHtml(entry.legalSignificance)}
+              </div>
+            </div>
+          ` : ""}
+          
+          <div class="entry-metadata">
+            ${entry.source ? `
+              <div class="metadata-item">
+                <span>Source: ${escapeHtml(entry.source)}</span>
+              </div>
+            ` : ""}
+            
+            ${entry.documents && entry.documents.length > 0 ? `
+              <div class="metadata-item">
+                <span>Docs: ${entry.documents.map(d => escapeHtml(d.filename)).join(", ")}</span>
+              </div>
+            ` : ""}
+            
+            ${entry.relatedEntries ? `
+              <div class="metadata-item">
+                <span>See: ${escapeHtml(entry.relatedEntries)}</span>
+              </div>
+            ` : ""}
+          </div>
         </div>
-      ` : ""}
-      
-      <div class="entry-footer">
-        ${entry.source ? `
-          <div class="entry-metadata">
-            <svg class="entry-metadata-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-            </svg>
-            <span>Source: ${escapeHtml(entry.source)}</span>
-          </div>
-        ` : ""}
-        
-        ${entry.relatedEntries ? `
-          <div class="entry-metadata">
-            <svg class="entry-metadata-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
-            </svg>
-            <span>Related: ${escapeHtml(entry.relatedEntries)}</span>
-          </div>
-        ` : ""}
-        
-        ${entry.documents && entry.documents.length > 0 ? `
-          <div class="entry-metadata">
-            <svg class="entry-metadata-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
-            </svg>
-            <span>Documents: ${entry.documents.map(d => d.filename).join(", ")}</span>
-          </div>
-        ` : ""}
       </div>
     </div>
   `
@@ -773,7 +764,16 @@ function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString("en-US", {
     year: "numeric",
-    month: "long",
+    month: "short",
     day: "numeric",
+  });
+}
+
+function formatDateCompact(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
   });
 }
