@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Plus, Calendar, FileText, Settings, Star } from 'lucide-react';
 import Link from 'next/link';
+import { PartiesList } from '@/components/dashboard/parties-list';
 
 interface PageProps {
   params: Promise<{ caseId: string }>;
@@ -39,6 +40,12 @@ export default async function CaseDetailPage({ params }: PageProps) {
           { isDefault: 'desc' },
           { createdAt: 'asc' }
         ]
+      },
+      parties: {
+        orderBy: [
+          { role: 'asc' },
+          { name: 'asc' }
+        ]
       }
     }
   });
@@ -72,8 +79,20 @@ export default async function CaseDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      <div className="grid gap-4">
-        <h2 className="text-xl font-semibold">Chronologies</h2>
+      <div className="grid gap-6">
+        {/* Parties Section */}
+        <PartiesList 
+          caseId={caseId} 
+          parties={case_.parties.map(p => ({
+            ...p,
+            createdAt: p.createdAt.toISOString(),
+            updatedAt: p.updatedAt.toISOString()
+          }))} 
+        />
+
+        {/* Chronologies Section */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Chronologies</h2>
         
         {case_.chronologies.length === 0 ? (
           <Card>
@@ -131,6 +150,7 @@ export default async function CaseDetailPage({ params }: PageProps) {
             ))}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

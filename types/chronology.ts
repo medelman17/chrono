@@ -52,3 +52,19 @@ export interface ChronologyInput {
   description?: string;
   type?: string;
 }
+
+export interface Party {
+  id: string;
+  name: string;
+  role: string;
+  description?: string | null;
+  caseId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PartyInput {
+  name: string;
+  role: string;
+  description?: string;
+}
