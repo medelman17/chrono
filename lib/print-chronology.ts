@@ -7,6 +7,7 @@ export interface PrintOptions {
   preparedBy?: string;
   includePageNumbers?: boolean;
   includeTableOfContents?: boolean;
+  includeLegalSignificance?: boolean;
   fontSize?: "small" | "medium" | "large";
   paperSize?: "letter" | "legal";
   margins?: "narrow" | "normal" | "wide";
@@ -38,6 +39,7 @@ export function generatePrintHTML(
     preparedBy = "",
     includePageNumbers = true,
     includeTableOfContents = false,
+    includeLegalSignificance = true,
     fontSize = "medium",
     paperSize = "letter",
     margins = "normal",
@@ -682,7 +684,7 @@ export function generatePrintHTML(
           
           <div class="entry-summary">${escapeHtml(entry.summary)}</div>
           
-          ${entry.legalSignificance ? `
+          ${includeLegalSignificance && entry.legalSignificance ? `
             <div class="legal-significance">
               <div class="legal-significance-content">
                 <strong>Legal:</strong> ${escapeHtml(entry.legalSignificance)}

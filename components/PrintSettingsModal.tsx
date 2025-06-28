@@ -24,6 +24,7 @@ export default function PrintSettingsModal({
     preparedBy: "",
     includePageNumbers: true,
     includeTableOfContents: entryCount > 10,
+    includeLegalSignificance: true,
     fontSize: "medium",
     paperSize: "letter",
     margins: "normal",
@@ -183,6 +184,17 @@ export default function PrintSettingsModal({
                 />
                 <span className="text-sm text-gray-700">
                   Include table of contents {entryCount > 10 ? "(recommended for long chronologies)" : ""}
+                </span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={options.includeLegalSignificance}
+                  onChange={(e) => setOptions({ ...options, includeLegalSignificance: e.target.checked })}
+                  className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">
+                  Include legal significance analysis
                 </span>
               </label>
             </div>
