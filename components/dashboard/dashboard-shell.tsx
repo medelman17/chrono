@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { CasesSidebar } from '@/components/dashboard/cases-sidebar';
 import { DashboardProvider, useDashboard } from '@/components/dashboard/dashboard-context';
 import {
