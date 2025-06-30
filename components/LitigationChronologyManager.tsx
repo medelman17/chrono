@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, ChangeEvent, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  ChangeEvent,
+  useCallback,
+  useRef,
+} from "react";
 import { ChronologyEntry, ChronologyFormData } from "@/types/chronology";
 import { generatePrintHTML, PrintOptions } from "@/lib/print-chronology";
 import PrintSettingsModal from "./PrintSettingsModal";
@@ -18,6 +24,9 @@ import {
   Upload,
   Save,
   Printer,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 
 interface LitigationChronologyManagerProps {
@@ -27,16 +36,22 @@ interface LitigationChronologyManagerProps {
   caseId?: string;
 }
 
-const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = ({
+const LitigationChronologyManager: React.FC<
+  LitigationChronologyManagerProps
+> = ({
   initialCaseContext = "",
   initialKeyParties = "",
   initialInstructions = "",
   caseId,
 }) => {
   const [entries, setEntries] = useState<ChronologyEntry[]>([]);
-  const [expandedEntries, setExpandedEntries] = useState<Set<number | string>>(new Set());
+  const [expandedEntries, setExpandedEntries] = useState<Set<number | string>>(
+    new Set()
+  );
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<ChronologyEntry | null>(null);
+  const [editingEntry, setEditingEntry] = useState<ChronologyEntry | null>(
+    null
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterParty, setFilterParty] = useState("all");
@@ -53,7 +68,10 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [pendingDocumentIds, setPendingDocumentIds] = useState<string[]>([]);
   const [showPrintModal, setShowPrintModal] = useState(false);
-  const [printExportType, setPrintExportType] = useState<"full" | "filtered">("full");
+  const [printExportType, setPrintExportType] = useState<"full" | "filtered">(
+    "full"
+  );
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc" | "none">("none");
 
   // Form state for new/edited entries
   const [formData, setFormData] = useState<ChronologyFormData>({
@@ -85,27 +103,27 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
   // Load entries from database if caseId is provided
   useEffect(() => {
     if (!caseId) return;
-    
+
     const fetchEntries = async () => {
       try {
         const response = await fetch(`/api/cases/${caseId}/entries`);
-        if (!response.ok) throw new Error('Failed to fetch entries');
+        if (!response.ok) throw new Error("Failed to fetch entries");
         const data = await response.json();
-        
+
         // Convert date strings to match our format
         const formattedEntries = data.map((entry: ChronologyEntry) => ({
           ...entry,
-          date: new Date(entry.date).toISOString().split('T')[0],
+          date: new Date(entry.date).toISOString().split("T")[0],
           createdAt: entry.createdAt,
           updatedAt: entry.updatedAt,
         }));
-        
+
         setEntries(formattedEntries);
       } catch (error) {
-        console.error('Error fetching entries:', error);
+        console.error("Error fetching entries:", error);
       }
     };
-    
+
     fetchEntries();
   }, [caseId]);
 
@@ -124,12 +142,26 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
 
   // Get unique parties from all entries
   const getUniqueParties = () => {
-    const allParties = entries.flatMap((entry) => entry.parties.split(",").map((p) => p.trim()));
+    const allParties = entries.flatMap((entry) =>
+      entry.parties.split(",").map((p) => p.trim())
+    );
     return [...new Set(allParties)].filter((p) => p.length > 0);
   };
 
+  // Toggle sort order
+  const toggleSortOrder = () => {
+    setSortOrder((prev) => {
+      if (prev === "none") return "desc";
+      if (prev === "desc") return "asc";
+      return "none";
+    });
+  };
+
   // Handle form input changes
-  const handleInputChange = (field: keyof ChronologyFormData, value: string) => {
+  const handleInputChange = (
+    field: keyof ChronologyFormData,
+    value: string
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -141,9 +173,9 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
     const files = event.target.files ? Array.from(event.target.files) : [];
     if (files.length === 0) return;
 
-    console.log('[DEBUG] Starting file upload process', {
+    console.log("[DEBUG] Starting file upload process", {
       fileCount: files.length,
-      files: files.map(f => ({ name: f.name, size: f.size, type: f.type })),
+      files: files.map((f) => ({ name: f.name, size: f.size, type: f.type })),
       caseId,
     });
 
@@ -157,16 +189,16 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
 
       for (const file of files) {
         console.log(`[DEBUG] Uploading file: ${file.name}`);
-        
+
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append("file", file);
         if (caseId) {
-          formData.append('caseId', caseId);
+          formData.append("caseId", caseId);
         }
 
         // Upload file to our API for processing
-        const uploadResponse = await fetch('/api/documents/upload', {
-          method: 'POST',
+        const uploadResponse = await fetch("/api/documents/upload", {
+          method: "POST",
           body: formData,
         });
 
@@ -175,56 +207,70 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
           console.error(`[DEBUG] Upload failed for ${file.name}:`, error);
           processedFiles.push({
             name: file.name,
-            error: error.error || 'Upload failed'
+            error: error.error || "Upload failed",
           });
           continue;
         }
 
         const uploadResult = await uploadResponse.json();
-        console.log(`[DEBUG] Upload successful for ${file.name}:`, uploadResult);
+        console.log(
+          `[DEBUG] Upload successful for ${file.name}:`,
+          uploadResult
+        );
         processedFiles.push(uploadResult);
-        
+
         // Add to combined content
         if (uploadResult.content) {
-          allContent += `\n\n--- FILE: ${uploadResult.name} (${Math.round(uploadResult.fileSize / 1024)}KB) ---\n${uploadResult.content}\n--- END FILE ---\n`;
+          allContent += `\n\n--- FILE: ${uploadResult.name} (${Math.round(
+            uploadResult.fileSize / 1024
+          )}KB) ---\n${uploadResult.content}\n--- END FILE ---\n`;
         }
       }
 
       // Get additional context from user input
-      const userContext = (document.getElementById("userContext") as HTMLTextAreaElement)?.value || "";
+      const userContext =
+        (document.getElementById("userContext") as HTMLTextAreaElement)
+          ?.value || "";
 
       // Extract document IDs from processed files
       const documentIds = processedFiles
-        .filter(file => file.id && !file.error)
-        .map(file => file.id);
-      
-      console.log('[DEBUG] Processed files summary:', {
+        .filter((file) => file.id && !file.error)
+        .map((file) => file.id);
+
+      console.log("[DEBUG] Processed files summary:", {
         totalFiles: processedFiles.length,
         successfulUploads: documentIds.length,
         documentIds,
         contentLength: allContent.length,
       });
-      
+
       // Analyze all files with Claude
       await analyzeWithClaude(allContent, userContext, documentIds);
     } catch (error) {
-      setClaudeResponse(`Error processing files: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setClaudeResponse(
+        `Error processing files: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     } finally {
       // Clear the file input
       event.target.value = "";
     }
   };
 
-
   // Claude integration for document analysis
-  const analyzeWithClaude = async (documentText: string, userContext: string = "", documentIds: string[] = []): Promise<void> => {
-    console.log('[DEBUG] Starting Claude analysis', {
+  const analyzeWithClaude = async (
+    documentText: string,
+    userContext: string = "",
+    documentIds: string[] = []
+  ): Promise<void> => {
+    console.log("[DEBUG] Starting Claude analysis", {
       contentLength: documentText.length,
       userContextLength: userContext.length,
       documentIds,
-      caseContext: caseContext?.substring(0, 100) + '...',
+      caseContext: caseContext?.substring(0, 100) + "...",
     });
-    
+
     setIsClaudeProcessing(true);
     setClaudeResponse("");
     setPendingDocumentIds(documentIds); // Store document IDs for linking
@@ -292,56 +338,64 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
       // Respond ONLY with valid JSON. Do not include any text outside the JSON structure.`;
 
       // Get key parties and instructions from form elements
-      const keyPartiesElement = document.getElementById("keyParties") as HTMLTextAreaElement;
-      const instructionsElement = document.getElementById("claudeInstructions") as HTMLTextAreaElement;
-      
+      const keyPartiesElement = document.getElementById(
+        "keyParties"
+      ) as HTMLTextAreaElement;
+      const instructionsElement = document.getElementById(
+        "claudeInstructions"
+      ) as HTMLTextAreaElement;
+
       // Call our API endpoint for Claude analysis
       const requestBody = {
         content: documentText,
-        filename: 'Multiple files',
+        filename: "Multiple files",
         caseContext: caseContext,
         keyParties: keyPartiesElement?.value || initialKeyParties,
         instructions: instructionsElement?.value || initialInstructions,
         userContext: userContext,
-        existingEntries: entries.map(entry => ({
+        existingEntries: entries.map((entry) => ({
           date: entry.date,
           time: entry.time,
           title: entry.title,
-          summary: entry.summary
-        }))
+          summary: entry.summary,
+        })),
       };
-      
-      console.log('[DEBUG] Sending analysis request', {
+
+      console.log("[DEBUG] Sending analysis request", {
         bodySize: JSON.stringify(requestBody).length,
         existingEntriesCount: entries.length,
       });
-      
-      const analysisResponse = await fetch('/api/documents/analyze', {
-        method: 'POST',
+
+      const analysisResponse = await fetch("/api/documents/analyze", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(requestBody),
       });
 
       if (!analysisResponse.ok) {
-        console.error('[DEBUG] Analysis failed:', analysisResponse.status, analysisResponse.statusText);
+        console.error(
+          "[DEBUG] Analysis failed:",
+          analysisResponse.status,
+          analysisResponse.statusText
+        );
         throw new Error(`Analysis failed: ${analysisResponse.statusText}`);
       }
 
       const analysisData = await analysisResponse.json();
-      console.log('[DEBUG] Analysis response received:', {
+      console.log("[DEBUG] Analysis response received:", {
         hasEntries: !!analysisData.entries,
         entriesCount: analysisData.entries?.length || 0,
         hasError: !!analysisData.error,
         hasRawResponse: !!analysisData.rawResponse,
       });
-      
+
       // Handle the response which contains entries array
       if (analysisData.error && analysisData.rawResponse) {
         // If parsing failed, try to extract JSON from raw response
         const cleanResponse = analysisData.rawResponse.trim();
-        if (cleanResponse.includes('{')) {
+        if (cleanResponse.includes("{")) {
           const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             try {
@@ -350,19 +404,20 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
                 analysisData.entries = parsed.entries;
               }
             } catch (e) {
-              console.error('Failed to parse raw response:', e);
+              console.error("Failed to parse raw response:", e);
             }
           }
         }
       }
-      
+
       // Use the first entry if multiple were returned
-      const analysisResult = analysisData.entries && analysisData.entries.length > 0 
-        ? analysisData.entries[0] 
-        : {};
-      
-      console.log('[DEBUG] Analysis result:', analysisResult);
-      console.log('[DEBUG] Pending document IDs for linking:', documentIds);
+      const analysisResult =
+        analysisData.entries && analysisData.entries.length > 0
+          ? analysisData.entries[0]
+          : {};
+
+      console.log("[DEBUG] Analysis result:", analysisResult);
+      console.log("[DEBUG] Pending document IDs for linking:", documentIds);
 
       // Pre-populate form with Claude's analysis
       const formDataValues = {
@@ -371,13 +426,16 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
         parties: analysisResult.parties || "",
         title: analysisResult.title || "",
         summary: analysisResult.summary || "",
-        source: analysisResult.source || analysisResult.sourceInfo || "Document Analysis",
+        source:
+          analysisResult.source ||
+          analysisResult.sourceInfo ||
+          "Document Analysis",
         category: analysisResult.category || "",
         legalSignificance: analysisResult.legalSignificance || "",
         relatedEntries: analysisResult.relatedEntries || "",
       };
-      
-      console.log('[DEBUG] Setting form data:', formDataValues);
+
+      console.log("[DEBUG] Setting form data:", formDataValues);
       setFormData(formDataValues);
 
       // Show Claude's response and any questions
@@ -394,7 +452,11 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
       setClaudeResponse(responseText);
       setShowAddForm(true);
     } catch (error) {
-      setClaudeResponse(`Error analyzing document: ${error instanceof Error ? error.message : 'Unknown error'}. Please create the entry manually.`);
+      setClaudeResponse(
+        `Error analyzing document: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }. Please create the entry manually.`
+      );
       setShowAddForm(true);
     } finally {
       setIsClaudeProcessing(false);
@@ -408,7 +470,7 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
       return;
     }
 
-    console.log('[DEBUG] Saving entry', {
+    console.log("[DEBUG] Saving entry", {
       isEdit: !!editingEntry,
       formData,
       pendingDocumentIds,
@@ -420,46 +482,68 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
         // Save to database if we have a caseId
         if (editingEntry) {
           // Update existing entry
-          const response = await fetch(`/api/cases/${caseId}/entries/${editingEntry.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData),
-          });
-          
-          if (!response.ok) throw new Error('Failed to update entry');
+          const response = await fetch(
+            `/api/cases/${caseId}/entries/${editingEntry.id}`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(formData),
+            }
+          );
+
+          if (!response.ok) throw new Error("Failed to update entry");
           const updatedEntry = await response.json();
-          
-          setEntries((prev) => prev.map((e) => 
-            e.id === editingEntry.id 
-              ? { ...updatedEntry, date: new Date(updatedEntry.date).toISOString().split('T')[0] }
-              : e
-          ));
+
+          setEntries((prev) =>
+            prev.map((e) =>
+              e.id === editingEntry.id
+                ? {
+                    ...updatedEntry,
+                    date: new Date(updatedEntry.date)
+                      .toISOString()
+                      .split("T")[0],
+                  }
+                : e
+            )
+          );
         } else {
           // Create new entry
           const requestBody = {
             ...formData,
             documentIds: pendingDocumentIds, // Include document IDs to link
           };
-          
-          console.log('[DEBUG] Creating new entry with body:', requestBody);
-          
+
+          console.log("[DEBUG] Creating new entry with body:", requestBody);
+
           const response = await fetch(`/api/cases/${caseId}/entries`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(requestBody),
           });
-          
+
           if (!response.ok) {
-            console.error('[DEBUG] Failed to create entry:', response.status, response.statusText);
-            throw new Error('Failed to create entry');
+            console.error(
+              "[DEBUG] Failed to create entry:",
+              response.status,
+              response.statusText
+            );
+            throw new Error("Failed to create entry");
           }
-          
+
           const newEntry = await response.json();
-          console.log('[DEBUG] Entry created successfully:', newEntry);
-          
+          console.log("[DEBUG] Entry created successfully:", newEntry);
+
           setEntries((prev) =>
-            [...prev, { ...newEntry, date: new Date(newEntry.date).toISOString().split('T')[0] }].sort(
-              (a, b) => new Date(a.date + " " + (a.time || "00:00")).getTime() - new Date(b.date + " " + (b.time || "00:00")).getTime()
+            [
+              ...prev,
+              {
+                ...newEntry,
+                date: new Date(newEntry.date).toISOString().split("T")[0],
+              },
+            ].sort(
+              (a, b) =>
+                new Date(a.date + " " + (a.time || "00:00")).getTime() -
+                new Date(b.date + " " + (b.time || "00:00")).getTime()
             )
           );
         }
@@ -468,25 +552,31 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
         const entry = {
           id: editingEntry ? editingEntry.id : Date.now(),
           ...formData,
-          createdAt: editingEntry ? editingEntry.createdAt : new Date().toISOString(),
+          createdAt: editingEntry
+            ? editingEntry.createdAt
+            : new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
 
         if (editingEntry) {
-          setEntries((prev) => prev.map((e) => (e.id === editingEntry.id ? entry : e)));
+          setEntries((prev) =>
+            prev.map((e) => (e.id === editingEntry.id ? entry : e))
+          );
         } else {
           setEntries((prev) =>
             [...prev, entry].sort(
-              (a, b) => new Date(a.date + " " + (a.time || "00:00")).getTime() - new Date(b.date + " " + (b.time || "00:00")).getTime()
+              (a, b) =>
+                new Date(a.date + " " + (a.time || "00:00")).getTime() -
+                new Date(b.date + " " + (b.time || "00:00")).getTime()
             )
           );
         }
       }
-      
+
       resetForm();
     } catch (error) {
-      console.error('Error saving entry:', error);
-      alert('Failed to save entry. Please try again.');
+      console.error("Error saving entry:", error);
+      alert("Failed to save entry. Please try again.");
     }
   };
 
@@ -516,17 +606,17 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
         if (caseId) {
           // Delete from database if we have a caseId
           const response = await fetch(`/api/cases/${caseId}/entries/${id}`, {
-            method: 'DELETE',
+            method: "DELETE",
           });
-          
-          if (!response.ok) throw new Error('Failed to delete entry');
+
+          if (!response.ok) throw new Error("Failed to delete entry");
         }
-        
+
         // Remove from local state
         setEntries((prev) => prev.filter((e) => e.id !== id));
       } catch (error) {
-        console.error('Error deleting entry:', error);
-        alert('Failed to delete entry. Please try again.');
+        console.error("Error deleting entry:", error);
+        alert("Failed to delete entry. Please try again.");
       }
     }
   };
@@ -542,85 +632,88 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
   const handleDocumentDownload = async (documentId: string) => {
     try {
       const response = await fetch(`/api/documents/${documentId}`);
-      
+
       if (!response.ok) {
-        throw new Error('Failed to download document');
+        throw new Error("Failed to download document");
       }
-      
+
       // Get the filename from the Content-Disposition header
-      const contentDisposition = response.headers.get('Content-Disposition');
+      const contentDisposition = response.headers.get("Content-Disposition");
       const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
-      const filename = filenameMatch ? filenameMatch[1] : 'download';
-      
+      const filename = filenameMatch ? filenameMatch[1] : "download";
+
       // Create a blob from the response
       const blob = await response.blob();
-      
+
       // Create a temporary URL for the blob
       const url = window.URL.createObjectURL(blob);
-      
+
       // Create a temporary anchor element and trigger download
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
-      
+
       // Cleanup
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Error downloading document:', error);
-      alert('Failed to download document. Please try again.');
+      console.error("Error downloading document:", error);
+      alert("Failed to download document. Please try again.");
     }
   };
 
   // Save case context data
-  const saveCaseContext = useCallback(async (showAlert = true) => {
-    if (!caseId) return;
-    
-    setIsSaving(true);
-    try {
-      const response = await fetch(`/api/cases/${caseId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          caseContext,
-          keyParties,
-          instructions,
-        }),
-      });
+  const saveCaseContext = useCallback(
+    async (showAlert = true) => {
+      if (!caseId) return;
 
-      if (!response.ok) {
-        throw new Error('Failed to save case context');
-      }
+      setIsSaving(true);
+      try {
+        const response = await fetch(`/api/cases/${caseId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            caseContext,
+            keyParties,
+            instructions,
+          }),
+        });
 
-      setLastSaved(new Date());
-      
-      // Show success feedback only if requested
-      if (showAlert) {
-        alert('Case context saved successfully!');
+        if (!response.ok) {
+          throw new Error("Failed to save case context");
+        }
+
+        setLastSaved(new Date());
+
+        // Show success feedback only if requested
+        if (showAlert) {
+          alert("Case context saved successfully!");
+        }
+      } catch (error) {
+        console.error("Error saving case context:", error);
+        if (showAlert) {
+          alert("Failed to save case context. Please try again.");
+        }
+      } finally {
+        setIsSaving(false);
       }
-    } catch (error) {
-      console.error('Error saving case context:', error);
-      if (showAlert) {
-        alert('Failed to save case context. Please try again.');
-      }
-    } finally {
-      setIsSaving(false);
-    }
-  }, [caseId, caseContext, keyParties, instructions]);
+    },
+    [caseId, caseContext, keyParties, instructions]
+  );
 
   // Debounced auto-save function
   const debouncedSave = useCallback(() => {
     if (!caseId) return;
-    
+
     // Clear existing timeout
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
-    
+
     // Set new timeout for auto-save
     saveTimeoutRef.current = setTimeout(() => {
       saveCaseContext(false); // Don't show alert for auto-save
@@ -630,7 +723,7 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
   // Trigger auto-save when context data changes
   useEffect(() => {
     debouncedSave();
-    
+
     // Cleanup timeout on unmount
     return () => {
       if (saveTimeoutRef.current) {
@@ -639,27 +732,47 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
     };
   }, [caseContext, keyParties, instructions, debouncedSave]);
 
-  // Filter entries based on search and filters
-  const filteredEntries = entries.filter((entry) => {
-    const matchesSearch =
-      !searchTerm ||
-      entry.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.summary.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.parties.toLowerCase().includes(searchTerm.toLowerCase());
+  // Filter and sort entries based on search and filters
+  const filteredEntries = entries
+    .filter((entry) => {
+      const matchesSearch =
+        !searchTerm ||
+        entry.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        entry.summary.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        entry.parties.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesCategory = filterCategory === "all" || entry.category === filterCategory;
-    const matchesParty = filterParty === "all" || entry.parties.toLowerCase().includes(filterParty.toLowerCase());
+      const matchesCategory =
+        filterCategory === "all" || entry.category === filterCategory;
+      const matchesParty =
+        filterParty === "all" ||
+        entry.parties.toLowerCase().includes(filterParty.toLowerCase());
 
-    const entryDate = new Date(entry.date);
-    const matchesDateRange =
-      (!startDate || entryDate >= new Date(startDate)) && (!endDate || entryDate <= new Date(endDate));
+      const entryDate = new Date(entry.date);
+      const matchesDateRange =
+        (!startDate || entryDate >= new Date(startDate)) &&
+        (!endDate || entryDate <= new Date(endDate));
 
-    return matchesSearch && matchesCategory && matchesParty && matchesDateRange;
-  });
+      return (
+        matchesSearch && matchesCategory && matchesParty && matchesDateRange
+      );
+    })
+    .sort((a, b) => {
+      if (sortOrder === "none") return 0;
+
+      const dateA = new Date(a.date + (a.time ? ` ${a.time}` : ""));
+      const dateB = new Date(b.date + (b.time ? ` ${b.time}` : ""));
+
+      if (sortOrder === "asc") {
+        return dateA.getTime() - dateB.getTime();
+      } else {
+        return dateB.getTime() - dateA.getTime();
+      }
+    });
 
   // Export chronology
   const exportChronology = async (exportType = "full") => {
-    const entriesToExport = exportType === "filtered" ? filteredEntries : entries;
+    const entriesToExport =
+      exportType === "filtered" ? filteredEntries : entries;
 
     if (entriesToExport.length === 0) {
       alert("No entries to export");
@@ -667,7 +780,9 @@ const LitigationChronologyManager: React.FC<LitigationChronologyManagerProps> = 
     }
 
     try {
-      const keyParties = (document.getElementById("keyParties") as HTMLTextAreaElement)?.value || "";
+      const keyParties =
+        (document.getElementById("keyParties") as HTMLTextAreaElement)?.value ||
+        "";
       // const claudeInstructions = (document.getElementById("claudeInstructions") as HTMLTextAreaElement)?.value || "";
 
       const caseContextForExport =
@@ -711,35 +826,46 @@ ${keyParties ? `Key Parties: ${keyParties}\n` : ""}`
       // For now, create a simple text export without Claude formatting
       const formattedChronology = `LITIGATION CHRONOLOGY
 ${caseContextForExport}
-${'='.repeat(50)}
+${"=".repeat(50)}
 
-${entriesToExport.map(entry => `
-${entry.date}${entry.time ? ' ' + entry.time : ''}
+${entriesToExport
+  .map(
+    (entry) => `
+${entry.date}${entry.time ? " " + entry.time : ""}
 ${entry.title}
 Parties: ${entry.parties}
 ${entry.summary}
 Category: ${entry.category}
 Legal Significance: ${entry.legalSignificance}
 Source: ${entry.source}
-${'—'.repeat(40)}
-`).join('\n')}`;
+${"—".repeat(40)}
+`
+  )
+  .join("\n")}`;
 
       // Create and download the chronology
       const blob = new Blob([formattedChronology], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `chronology-${exportType}-${new Date().toISOString().split("T")[0]}.txt`;
+      a.download = `chronology-${exportType}-${
+        new Date().toISOString().split("T")[0]
+      }.txt`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      alert(`Error generating chronology: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(
+        `Error generating chronology: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   };
 
   // Print preview functionality
   const printPreview = (options: PrintOptions) => {
-    const entriesToExport = printExportType === "filtered" ? filteredEntries : entries;
+    const entriesToExport =
+      printExportType === "filtered" ? filteredEntries : entries;
 
     if (entriesToExport.length === 0) {
       alert("No entries to print");
@@ -747,9 +873,9 @@ ${'—'.repeat(40)}
     }
 
     const printHTML = generatePrintHTML(
-      entriesToExport, 
-      caseContext, 
-      keyParties, 
+      entriesToExport,
+      caseContext,
+      keyParties,
       options
     );
 
@@ -772,8 +898,12 @@ ${'—'.repeat(40)}
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Litigation Chronology Manager</h1>
-          <p className="text-gray-600">AI-powered chronology development for litigation case management</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Litigation Chronology Manager
+          </h1>
+          <p className="text-gray-600">
+            AI-powered chronology development for litigation case management
+          </p>
         </div>
 
         {/* Case Context Section */}
@@ -783,9 +913,12 @@ ${'—'.repeat(40)}
             onClick={() => setShowCaseContext(!showCaseContext)}
           >
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Case Context & Instructions</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Case Context & Instructions
+              </h3>
               <p className="text-sm text-gray-600">
-                Provide case background to help Claude with analysis and legal significance
+                Provide case background to help Claude with analysis and legal
+                significance
               </p>
             </div>
             <div className="text-gray-400">{showCaseContext ? "−" : "+"}</div>
@@ -794,7 +927,9 @@ ${'—'.repeat(40)}
           {showCaseContext && (
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Case Overview & Legal Issues</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Case Overview & Legal Issues
+                </label>
                 <textarea
                   value={caseContext}
                   onChange={(e) => setCaseContext(e.target.value)}
@@ -808,7 +943,9 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Key Parties & Roles</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Key Parties & Roles
+                  </label>
                   <textarea
                     placeholder="List main parties and their roles:
 • John Smith (Buyer/Plaintiff)
@@ -843,10 +980,13 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
               </div>
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="text-sm font-semibold text-blue-900 mb-2">💡 Pro Tip:</h4>
+                <h4 className="text-sm font-semibold text-blue-900 mb-2">
+                  💡 Pro Tip:
+                </h4>
                 <p className="text-sm text-blue-800">
-                  The more context you provide, the better Claude can identify legal significance, categorize events,
-                  and ask relevant clarifying questions. Update this as your case develops.
+                  The more context you provide, the better Claude can identify
+                  legal significance, categorize events, and ask relevant
+                  clarifying questions. Update this as your case develops.
                 </p>
               </div>
 
@@ -865,7 +1005,7 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
                     className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Save size={16} />
-                    {isSaving ? 'Saving...' : 'Save Case Context'}
+                    {isSaving ? "Saving..." : "Save Case Context"}
                   </button>
                 </div>
               )}
@@ -875,13 +1015,30 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
 
         {/* Controls */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-4">
+          <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 mb-4">
             <button
               onClick={() => setShowAddForm(true)}
               className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
             >
               <Plus size={20} />
               Add Entry
+            </button>
+
+            <button
+              onClick={toggleSortOrder}
+              className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50"
+              title={`Sort by date: ${
+                sortOrder === "none"
+                  ? "unsorted"
+                  : sortOrder === "asc"
+                  ? "oldest first"
+                  : "newest first"
+              }`}
+            >
+              {sortOrder === "none" && <ArrowUpDown size={20} />}
+              {sortOrder === "asc" && <ArrowUp size={20} />}
+              {sortOrder === "desc" && <ArrowDown size={20} />}
+              Sort Date
             </button>
 
             <button
@@ -984,12 +1141,16 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
               <div className="text-center">
                 <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                 <label htmlFor="fileInput" className="cursor-pointer">
-                  <span className="text-lg font-medium text-gray-700">Upload Documents</span>
+                  <span className="text-lg font-medium text-gray-700">
+                    Upload Documents
+                  </span>
                   <p className="text-sm text-gray-500 mt-1">
-                    EML, TXT, DOC, images, or other text-based litigation documents
+                    EML, TXT, DOC, images, or other text-based litigation
+                    documents
                   </p>
                   <p className="text-xs text-amber-600 mt-1 font-medium">
-                    ⚠️ PDFs: Copy/paste content below instead of uploading for better results
+                    ⚠️ PDFs: Copy/paste content below instead of uploading for
+                    better results
                   </p>
                   <input
                     id="fileInput"
@@ -1008,11 +1169,14 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
 
             {/* Manual Text Input */}
             <div className="border-t pt-4">
-              <h4 className="text-md font-medium text-gray-700 mb-3">📝 Text Input (Best for PDFs):</h4>
+              <h4 className="text-md font-medium text-gray-700 mb-3">
+                📝 Text Input (Best for PDFs):
+              </h4>
               <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
                 <p className="text-sm text-green-800">
-                  <strong>💡 Pro Tip for PDFs:</strong> Open your PDF, copy the relevant text content, and paste it
-                  here. Claude will analyze the actual content instead of just the filename.
+                  <strong>💡 Pro Tip for PDFs:</strong> Open your PDF, copy the
+                  relevant text content, and paste it here. Claude will analyze
+                  the actual content instead of just the filename.
                 </p>
               </div>
               <textarea
@@ -1030,12 +1194,26 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
 
             <button
               onClick={() => {
-                const docText = (document.getElementById("documentText") as HTMLTextAreaElement)?.value || "";
-                const context = (document.getElementById("userContext") as HTMLTextAreaElement)?.value || "";
+                const docText =
+                  (
+                    document.getElementById(
+                      "documentText"
+                    ) as HTMLTextAreaElement
+                  )?.value || "";
+                const context =
+                  (
+                    document.getElementById(
+                      "userContext"
+                    ) as HTMLTextAreaElement
+                  )?.value || "";
                 if (docText.trim()) {
                   analyzeWithClaude(docText, context);
-                  const docTextEl = document.getElementById("documentText") as HTMLTextAreaElement;
-                  const contextEl = document.getElementById("userContext") as HTMLTextAreaElement;
+                  const docTextEl = document.getElementById(
+                    "documentText"
+                  ) as HTMLTextAreaElement;
+                  const contextEl = document.getElementById(
+                    "userContext"
+                  ) as HTMLTextAreaElement;
                   if (docTextEl) docTextEl.value = "";
                   if (contextEl) contextEl.value = "";
                 } else {
@@ -1057,8 +1235,12 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
 
             {claudeResponse && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-900 mb-2">Claude Analysis:</h4>
-                <pre className="text-sm text-blue-800 whitespace-pre-wrap">{claudeResponse}</pre>
+                <h4 className="font-semibold text-blue-900 mb-2">
+                  Claude Analysis:
+                </h4>
+                <pre className="text-sm text-blue-800 whitespace-pre-wrap">
+                  {claudeResponse}
+                </pre>
               </div>
             )}
           </div>
@@ -1067,11 +1249,15 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
         {/* Add/Edit Entry Form */}
         {showAddForm && (
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-4">{editingEntry ? "Edit" : "Add"} Chronology Entry</h3>
+            <h3 className="text-lg font-semibold mb-4">
+              {editingEntry ? "Edit" : "Add"} Chronology Entry
+            </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Date *
+                </label>
                 <input
                   type="date"
                   value={formData.date}
@@ -1081,7 +1267,9 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Time
+                </label>
                 <input
                   type="time"
                   value={formData.time}
@@ -1093,7 +1281,9 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Parties Involved</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Parties Involved
+                </label>
                 <input
                   type="text"
                   placeholder="e.g., M. Edelman, K. Maloney"
@@ -1104,10 +1294,14 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Category
+                </label>
                 <select
                   value={formData.category}
-                  onChange={(e) => handleInputChange("category", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("category", e.target.value)
+                  }
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Category</option>
@@ -1121,7 +1315,9 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Event Title *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Event Title *
+              </label>
               <input
                 type="text"
                 placeholder="e.g., Email from M. Edelman to K. Maloney re: Contract Terms"
@@ -1132,7 +1328,9 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Factual Summary *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Factual Summary *
+              </label>
               <textarea
                 placeholder="Objective description of what occurred..."
                 value={formData.summary}
@@ -1143,7 +1341,9 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Source</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Source
+              </label>
               <input
                 type="text"
                 placeholder="e.g., Email attachment, Deposition transcript p. 45"
@@ -1154,32 +1354,46 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Legal Significance</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Legal Significance
+              </label>
               <textarea
                 placeholder="Analysis of potential legal significance in the litigation..."
                 value={formData.legalSignificance}
-                onChange={(e) => handleInputChange("legalSignificance", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("legalSignificance", e.target.value)
+                }
                 rows={3}
                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Related Entries</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Related Entries
+              </label>
               <input
                 type="text"
                 placeholder="References to other chronology entries..."
                 value={formData.relatedEntries}
-                onChange={(e) => handleInputChange("relatedEntries", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("relatedEntries", e.target.value)
+                }
                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div className="flex gap-3">
-              <button onClick={saveEntry} className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+              <button
+                onClick={saveEntry}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+              >
                 {editingEntry ? "Update" : "Save"} Entry
               </button>
-              <button onClick={resetForm} className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
+              <button
+                onClick={resetForm}
+                className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600"
+              >
                 Cancel
               </button>
             </div>
@@ -1189,7 +1403,9 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
         {/* Chronology Entries */}
         <div className="bg-white rounded-lg shadow-sm">
           <div className="p-6 border-b border-gray-200">
-            <h3 className="text-lg font-semibold">Chronology Entries ({filteredEntries.length})</h3>
+            <h3 className="text-lg font-semibold">
+              Chronology Entries ({filteredEntries.length})
+            </h3>
           </div>
 
           <div className="divide-y divide-gray-200">
@@ -1219,16 +1435,24 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
                     </div>
 
                     <div className="flex gap-2">
-                      <button onClick={() => editEntry(entry)} className="text-gray-500 hover:text-blue-600">
+                      <button
+                        onClick={() => editEntry(entry)}
+                        className="text-gray-500 hover:text-blue-600"
+                      >
                         <Edit3 size={16} />
                       </button>
-                      <button onClick={() => deleteEntry(entry.id)} className="text-gray-500 hover:text-red-600">
+                      <button
+                        onClick={() => deleteEntry(entry.id)}
+                        className="text-gray-500 hover:text-red-600"
+                      >
                         <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
 
-                  <h4 className="font-semibold text-gray-900 mb-2">{entry.title}</h4>
+                  <h4 className="font-semibold text-gray-900 mb-2">
+                    {entry.title}
+                  </h4>
 
                   {entry.parties && (
                     <div className="flex items-center gap-2 mb-2 text-sm text-gray-600">
@@ -1253,15 +1477,23 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
                         <div className="space-y-3">
                           {entry.legalSignificance && (
                             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                              <h5 className="text-sm font-medium text-yellow-800 mb-1">Legal Significance:</h5>
-                              <p className="text-sm text-yellow-700">{entry.legalSignificance}</p>
+                              <h5 className="text-sm font-medium text-yellow-800 mb-1">
+                                Legal Significance:
+                              </h5>
+                              <p className="text-sm text-yellow-700">
+                                {entry.legalSignificance}
+                              </p>
                             </div>
                           )}
 
                           {entry.relatedEntries && (
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                              <h5 className="text-sm font-medium text-blue-800 mb-1">Related Entries:</h5>
-                              <p className="text-sm text-blue-700">{entry.relatedEntries}</p>
+                              <h5 className="text-sm font-medium text-blue-800 mb-1">
+                                Related Entries:
+                              </h5>
+                              <p className="text-sm text-blue-700">
+                                {entry.relatedEntries}
+                              </p>
                             </div>
                           )}
                         </div>
@@ -1285,7 +1517,9 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
                             >
                               <FileText size={12} />
                               <span>{doc.filename}</span>
-                              {idx < entry.documents!.length - 1 && <span className="text-gray-400">,</span>}
+                              {idx < entry.documents!.length - 1 && (
+                                <span className="text-gray-400">,</span>
+                              )}
                             </button>
                           ))}
                         </div>
@@ -1294,7 +1528,9 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
                     <span>
                       Created: {new Date(entry.createdAt).toLocaleDateString()}
                       {entry.updatedAt !== entry.createdAt &&
-                        ` • Updated: ${new Date(entry.updatedAt).toLocaleDateString()}`}
+                        ` • Updated: ${new Date(
+                          entry.updatedAt
+                        ).toLocaleDateString()}`}
                     </span>
                   </div>
                 </div>
@@ -1308,7 +1544,11 @@ Example: 'This is a commercial real estate dispute involving a failed purchase o
           isOpen={showPrintModal}
           onClose={() => setShowPrintModal(false)}
           onPrint={printPreview}
-          entryCount={printExportType === "filtered" ? filteredEntries.length : entries.length}
+          entryCount={
+            printExportType === "filtered"
+              ? filteredEntries.length
+              : entries.length
+          }
         />
       </div>
     </div>
